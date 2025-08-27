@@ -76,7 +76,7 @@ const TankSetupScreen = ({ navigation }) => {
       <TouchableOpacity
         style={styles.continueButton}
         onPress={() =>
-          navigation.navigate("TankScan", {
+          navigation.navigate("PhScanScreen", {
             tankData: { tankName, tankType, tankSize, species },
           })
         }

@@ -64,7 +64,7 @@ export default function LoginScreen({ navigation }) {
 
       <View style={styles.divider}>
         <View style={styles.line} />
-        <Text style={styles.orText}>or-</Text>
+        <Text style={styles.orText}>or</Text>
         <View style={styles.line} />
       </View>
 

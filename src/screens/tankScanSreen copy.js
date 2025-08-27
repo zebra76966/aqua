@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../authcontext";
@@ -13,9 +13,7 @@ const TankScanScreen = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [scanData, setScanData] = useState([]);
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [tempData, setTempData] = useState({});
+  const [scanData, setScanData] = useState(null);
 
   const cameraRef = useRef(null);
   const sheetRef = useRef(null);
@@ -33,11 +31,16 @@ const TankScanScreen = () => {
       if (!cameraRef.current) throw new Error("Camera not ready");
 
       let photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5,
+        quality: 0.5, // reduce initial size
         skipProcessing: true,
       });
 
-      const manipulated = await ImageManipulator.manipulateAsync(photo.uri, [{ resize: { width: 1024 } }], { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG });
+      // Compress and resize further if needed
+      const manipulated = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 1024 } }], // Resize to max width 1024px
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+      );
 
       uploadImage(manipulated.uri);
     } catch (error) {
@@ -62,12 +65,12 @@ const TankScanScreen = () => {
         body: formData,
       });
 
+      console.log(response);
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail || "Upload failed");
 
-      const arrayData = Array.isArray(result) ? result : [result];
-      setScanData(arrayData);
-      sheetRef.current.open();
+      setScanData(result);
+      sheetRef.current.open(); // open bottom sheet
     } catch (error) {
       alert(error.message);
       setScanned(false);
@@ -77,81 +80,8 @@ const TankScanScreen = () => {
     }
   };
 
-  const handleEdit = (index) => {
-    setEditingIndex(index);
-    setTempData({ ...scanData[index] });
-  };
-
-  const handleSaveEdit = () => {
-    const updated = [...scanData];
-    updated[editingIndex] = tempData;
-    setScanData(updated);
-    setEditingIndex(null);
-  };
-
-  const handleRemove = (index) => {
-    const updated = scanData.filter((_, i) => i !== index);
-    setScanData(updated);
-  };
-
   const flipCamera = () => {
     setFacing((prev) => (prev === "back" ? "front" : "back"));
-  };
-
-  const renderFishCard = (fish, index) => {
-    const metadata = fish.metadata || {};
-    const isEditing = editingIndex === index;
-
-    return (
-      <View key={index} style={styles.card}>
-        {isEditing ? (
-          <>
-            <TextInput style={styles.input} value={tempData.class_name} onChangeText={(t) => setTempData((p) => ({ ...p, class_name: t }))} />
-            <TextInput
-              style={styles.input}
-              value={metadata.species_name}
-              onChangeText={(t) =>
-                setTempData((p) => ({
-                  ...p,
-                  metadata: { ...p.metadata, species_name: t },
-                }))
-              }
-            />
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveEdit}>
-              <Text style={styles.buttonText}>Save</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <View style={styles.row}>
-              <Icon name="tag" size={20} color="#007AFF" />
-              <Text style={styles.label}>Class Name:</Text>
-              <Text style={styles.value}>{fish.class_name}</Text>
-            </View>
-            <View style={styles.row}>
-              <Icon name="check-decagram" size={20} color="green" />
-              <Text style={styles.label}>Confidence:</Text>
-              <Text style={styles.value}>{(fish.confidence * 100).toFixed(1)}%</Text>
-            </View>
-
-            <View style={styles.row}>
-              <Icon name="fish" size={20} color="#FF8C00" />
-              <Text style={styles.label}>Species:</Text>
-              <Text style={styles.value}>{metadata?.species_name || "N/A"}</Text>
-            </View>
-            <Text style={styles.fishText}>Max Size: {metadata.max_size_cm} cm</Text>
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.iconButton} onPress={() => handleEdit(index)}>
-                <Icon name="pencil" size={25} color="#007AFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton} onPress={() => handleRemove(index)}>
-                <Icon name="delete" size={25} color="red" />
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-      </View>
-    );
   };
 
   if (!permission) return <View />;
@@ -188,9 +118,9 @@ const TankScanScreen = () => {
       {/* Bottom Sheet */}
       <RBSheet
         ref={sheetRef}
-        closeOnDragDown
-        closeOnPressMask
-        height={550}
+        closeOnDragDown={true}
+        closeOnPressMask={true}
+        height={500} // Default height (half screen)
         customStyles={{
           wrapper: { backgroundColor: "rgba(0,0,0,0.5)" },
           container: {
@@ -202,19 +132,62 @@ const TankScanScreen = () => {
         }}
       >
         <ScrollView>
-          <Text style={styles.modalTitle}>Scan Results</Text>
-          {scanData.map((fish, index) => renderFishCard(fish, index))}
-          {scanData.length > 0 && (
-            <TouchableOpacity
-              style={[styles.button, { marginTop: 20 }]}
-              onPress={() => {
-                sheetRef.current.close();
-                navigation.navigate("PhScanScreen", { tankData: scanData });
-              }}
-            >
-              <Text style={styles.buttonText}>Confirm</Text>
-            </TouchableOpacity>
+          <Text style={styles.modalTitle}>Scan Result</Text>
+          {scanData && (
+            <>
+              <View style={styles.row}>
+                <Icon name="tag" size={20} color="#007AFF" />
+                <Text style={styles.label}>Class Name:</Text>
+                <Text style={styles.value}>{scanData.class_name || "N/A"}</Text>
+              </View>
+
+              <View style={styles.row}>
+                <Icon name="check-decagram" size={20} color="green" />
+                <Text style={styles.label}>Confidence:</Text>
+                <Text style={styles.value}>{(scanData.confidence * 100).toFixed(2)}%</Text>
+              </View>
+
+              <View style={styles.row}>
+                <Icon name="fish" size={20} color="#FF8C00" />
+                <Text style={styles.label}>Species Name:</Text>
+                <Text style={styles.value}>{scanData.metadata?.species_name || "N/A"}</Text>
+              </View>
+
+              <View style={styles.row}>
+                <Icon name="format-letter-case" size={20} color="#8A2BE2" />
+                <Text style={styles.label}>Nomenclature:</Text>
+                <Text style={styles.value}>{scanData.metadata?.species_Nomenclature || "N/A"}</Text>
+              </View>
+
+              <View style={styles.row}>
+                <Icon name="ruler" size={20} color="#DC143C" />
+                <Text style={styles.label}>Max Size:</Text>
+                <Text style={styles.value}>{scanData.metadata?.max_size_cm ? `${scanData.metadata.max_size_cm} cm` : "N/A"}</Text>
+              </View>
+
+              <View style={styles.row}>
+                <Icon name="thermometer" size={20} color="#FF6347" />
+                <Text style={styles.label}>Temperature:</Text>
+                <Text style={styles.value}>{scanData.metadata?.temperature || "N/A"}</Text>
+              </View>
+
+              <View style={styles.row}>
+                <Icon name="earth" size={20} color="#4682B4" />
+                <Text style={styles.label}>URL:</Text>
+                <Text style={styles.value}>{scanData.metadata?.species_url || "N/A"}</Text>
+              </View>
+            </>
           )}
+
+          <TouchableOpacity
+            style={[styles.button, { marginTop: 20 }]}
+            onPress={() => {
+              sheetRef.current.close();
+              navigation.navigate("PhScanScreen", { tankData: scanData });
+            }}
+          >
+            <Text style={styles.buttonText}>Confirm</Text>
+          </TouchableOpacity>
         </ScrollView>
       </RBSheet>
     </View>
@@ -249,40 +222,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 15,
     textAlign: "center",
-  },
-  card: {
-    backgroundColor: "#f2f2f2",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  fishTitle: { fontSize: 16, fontWeight: "bold" },
-  fishText: { fontSize: 14, marginTop: 4 },
-  actionRow: {
-    flexDirection: "row",
-    marginTop: 8,
-    justifyContent: "flex-end",
-  },
-  iconButton: {
-    marginRight: 5,
-    backgroundColor: "#383838ff",
-    paddingVertical: 3,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 6,
-    marginBottom: 8,
-    backgroundColor: "#fff",
-  },
-  saveButton: {
-    backgroundColor: "#007AFF",
-    padding: 8,
-    borderRadius: 6,
-    alignItems: "center",
   },
   row: {
     flexDirection: "row",
