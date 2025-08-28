@@ -1,21 +1,65 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from "react-native";
+import React, { useState, useContext } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Slider from "@react-native-community/slider";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import MaterialIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import Entypo from "react-native-vector-icons/Entypo";
+import { baseUrl } from "../config";
+import { AuthContext } from "../authcontext";
 
 const TankSetupScreen = ({ navigation }) => {
   const [tankName, setTankName] = useState("");
   const [tankType, setTankType] = useState("");
   const [tankSize, setTankSize] = useState(35.6);
-  const [species, setSpecies] = useState("");
+  const [sizeUnit, setSizeUnit] = useState("G"); // Default Gallons
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const { token } = useContext(AuthContext);
+
+  const handleSubmit = async () => {
+    if (!tankName || !tankType || !tankSize) {
+      Alert.alert("Error", "Please fill in all required fields.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${baseUrl}/tanks/tank/create/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: tankName,
+          tank_type: tankType.toUpperCase() === "FRESHWATER" ? "FRESH" : "SALT",
+          size: parseFloat(tankSize),
+          size_unit: sizeUnit,
+          notes,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        navigation.navigate("TankScan", {
+          tankDataLocal: { name: tankName }, // send only tank name
+        });
+      } else {
+        Alert.alert("Error", data?.detail || "Something went wrong.");
+      }
+    } catch (error) {
+      Alert.alert("Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {/* Logo */}
-      {/* <Image source={require("../../assets/icon.png")} style={styles.logo} /> */}
       <Text style={styles.title}>AQUA AI</Text>
 
       {/* Tank Name */}
@@ -29,8 +73,8 @@ const TankSetupScreen = ({ navigation }) => {
         <MaterialIcons name="fish" size={18} color="#333" style={styles.icon} />
         <Picker selectedValue={tankType} style={styles.picker} onValueChange={(itemValue) => setTankType(itemValue)}>
           <Picker.Item label="Tank Type" value="" />
-          <Picker.Item label="Freshwater" value="freshwater" />
-          <Picker.Item label="Saltwater" value="saltwater" />
+          <Picker.Item label="Freshwater" value="Freshwater" />
+          <Picker.Item label="Saltwater" value="Saltwater" />
         </Picker>
       </View>
 
@@ -38,7 +82,7 @@ const TankSetupScreen = ({ navigation }) => {
       <View style={styles.sliderContainer}>
         <View style={styles.sliderLabel}>
           <MaterialIcons name="ruler" size={16} />
-          <Text style={{ marginLeft: 6 }}>Tank Size (gallons)</Text>
+          <Text style={{ marginLeft: 6 }}>Tank Size ({sizeUnit})</Text>
         </View>
 
         <View style={styles.sizeBox}>
@@ -48,7 +92,7 @@ const TankSetupScreen = ({ navigation }) => {
         <Slider
           style={{ width: "100%", height: 40 }}
           minimumValue={0}
-          maximumValue={100}
+          maximumValue={200}
           value={tankSize}
           onValueChange={setTankSize}
           minimumTrackTintColor="#00CED1"
@@ -58,31 +102,32 @@ const TankSetupScreen = ({ navigation }) => {
         <Text style={styles.sliderValue}>{tankSize.toFixed(1)}</Text>
       </View>
 
-      {/* Species */}
+      {/* Toggle Gallons / Litres */}
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity style={[styles.toggleButton, sizeUnit === "G" && styles.toggleActive]} onPress={() => setSizeUnit("G")}>
+          <Text style={sizeUnit === "G" ? styles.toggleTextActive : styles.toggleText}>Gallons</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.toggleButton, sizeUnit === "L" && styles.toggleActive]} onPress={() => setSizeUnit("L")}>
+          <Text style={sizeUnit === "L" ? styles.toggleTextActive : styles.toggleText}>Litres</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Notes */}
       <View style={styles.inputContainer}>
-        <MaterialIcons name="fish" size={18} color="#333" style={styles.icon} />
-        <TextInput style={styles.input} placeholder="Species" placeholderTextColor="#999" value={species} onChangeText={setSpecies} />
-        <Entypo name="magnifying-glass" size={18} color="#333" />
+        <Entypo name="text" size={18} color="#333" style={styles.icon} />
+        <TextInput style={styles.input} placeholder="Notes (optional)" placeholderTextColor="#999" value={notes} onChangeText={setNotes} />
       </View>
 
-      {/* Indicator */}
-      <View style={styles.indicator}>
-        <View style={styles.dotActive} />
-        <View style={styles.dot} />
-      </View>
-
-      {/* Continue Button */}
-
-      <TouchableOpacity
-        style={styles.continueButton}
-        onPress={() =>
-          navigation.navigate("PhScanScreen", {
-            tankData: { tankName, tankType, tankSize, species },
-          })
-        }
-      >
-        <Text style={styles.continueText}>CONTINUE</Text>
-        <Entypo name="chevron-right" size={22} color="#00CED1" />
+      {/* Continue Button or Loader */}
+      <TouchableOpacity style={styles.continueButton} onPress={handleSubmit} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator size="small" color="#00CED1" />
+        ) : (
+          <>
+            <Text style={styles.continueText}>CONTINUE</Text>
+            <Entypo name="chevron-right" size={22} color="#00CED1" />
+          </>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -94,12 +139,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 60,
     backgroundColor: "#f9f9f9",
-  },
-  logo: {
-    width: 90,
-    height: 90,
-    alignSelf: "center",
-    marginBottom: 10,
   },
   title: {
     fontSize: 22,
@@ -156,24 +195,28 @@ const styles = StyleSheet.create({
     color: "#00CED1",
     fontWeight: "bold",
   },
-  indicator: {
+  toggleContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginVertical: 14,
+    marginBottom: 20,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#ccc",
-    marginHorizontal: 4,
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#00CED1",
+    alignItems: "center",
   },
-  dotActive: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  toggleActive: {
     backgroundColor: "#00CED1",
-    marginHorizontal: 4,
+  },
+  toggleText: {
+    color: "#00CED1",
+    fontWeight: "bold",
+  },
+  toggleTextActive: {
+    color: "#fff",
+    fontWeight: "bold",
   },
   continueButton: {
     flexDirection: "row",

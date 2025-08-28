@@ -1,1 +1,1 @@
-export const baseUrl = "http://52.56.90.142/api/v1";
+export const baseUrl = "https://api.aquaai.uk/api/v1";

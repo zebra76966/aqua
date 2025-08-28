@@ -28,7 +28,6 @@ const PhScanScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const cameraRef = useRef(null);
-
   useEffect(() => {
     if (!permission) requestPermission();
   }, []);
@@ -102,6 +101,7 @@ const PhScanScreen = () => {
     setModalVisible(false);
     navigation.navigate("TankSuccess", {
       tankData: route.params?.tankData || {},
+      tankName: route.params?.tankName || "My Tank",
       phResult: { ...scanResult, estimated_ph: pHscale },
     });
   };

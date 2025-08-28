@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput } from "react-native";
+import { useRoute } from "@react-navigation/native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput, Image } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../authcontext";
@@ -9,6 +10,8 @@ import RBSheet from "react-native-raw-bottom-sheet";
 import * as ImageManipulator from "expo-image-manipulator";
 
 const TankScanScreen = () => {
+  const route = useRoute();
+  const { tankDataLocal } = route.params;
   const [facing, setFacing] = useState("back");
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -65,8 +68,21 @@ const TankScanScreen = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail || "Upload failed");
 
+      // ✅ Normalize response into your UI format
       const arrayData = Array.isArray(result) ? result : [result];
-      setScanData(arrayData);
+
+      const mappedData = arrayData.map((item) => {
+        const predictions = item?.data?.predictions || {};
+        return {
+          class_name: predictions.class_name || "Unknown",
+          confidence: predictions.confidence || 0,
+          metadata: predictions.metadata || {},
+          image_url: item?.data?.image_url || null,
+        };
+      });
+
+      setScanData(mappedData);
+      console.log("res (mapped):", mappedData);
       sheetRef.current.open();
     } catch (error) {
       alert(error.message);
@@ -104,6 +120,13 @@ const TankScanScreen = () => {
 
     return (
       <View key={index} style={styles.card}>
+        {/* Show fish image if available */}
+        {fish.image_url && (
+          <View style={{ alignItems: "center", marginBottom: 10 }}>
+            <Image source={{ uri: fish.image_url }} style={styles.fishImage} resizeMode="cover" />
+          </View>
+        )}
+
         {isEditing ? (
           <>
             <TextInput style={styles.input} value={tempData.class_name} onChangeText={(t) => setTempData((p) => ({ ...p, class_name: t }))} />
@@ -209,7 +232,7 @@ const TankScanScreen = () => {
               style={[styles.button, { marginTop: 20 }]}
               onPress={() => {
                 sheetRef.current.close();
-                navigation.navigate("PhScanScreen", { tankData: scanData });
+                navigation.navigate("PhScanScreen", { tankData: scanData, tankName: tankDataLocal.name });
               }}
             >
               <Text style={styles.buttonText}>Confirm</Text>
@@ -297,5 +320,10 @@ const styles = StyleSheet.create({
   value: {
     flex: 1,
     textAlign: "right",
+  },
+  fishImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 8,
   },
 });

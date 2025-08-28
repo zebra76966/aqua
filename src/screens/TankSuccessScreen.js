@@ -2,8 +2,11 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { AntDesign, Entypo } from "@expo/vector-icons";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 export default function TankSuccessScreen({ navigation }) {
+  const route = useRoute();
+  const { tankName } = route.params || { tankName: "My Tank" };
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>AQUA AI</Text>
@@ -12,7 +15,7 @@ export default function TankSuccessScreen({ navigation }) {
         <AntDesign name="checkcircle" size={70} color="#00CED1" style={{ marginBottom: 20 }} />
       </View>
       <Text style={styles.successText}>Scan Completed</Text>
-      <Text style={styles.successTextBold}>Tank #name</Text>
+      <Text style={styles.successTextBold}>{tankName}</Text>
       <Text style={styles.successText}>Added Successfully!</Text>
 
       <TouchableOpacity style={styles.addButton}>
