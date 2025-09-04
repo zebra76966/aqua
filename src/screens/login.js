@@ -1,10 +1,22 @@
-import React, { useState, useContext } from "react";
-import styles from "./login.stylesheet";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import React, { useState, useContext, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Platform } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import { makeRedirectUri, exchangeCodeAsync, useAutoDiscovery, ResponseType } from "expo-auth-session";
+
+import styles from "./login.stylesheet";
 import useThemeStyles from "../useThemeStyle";
 import { baseUrl } from "../config";
 import { AuthContext } from "../authcontext";
+
+WebBrowser.maybeCompleteAuthSession();
+
+// --- IDs from backend ---
+const ANDROID_CLIENT_ID = "859674051212-kp746doga77holq4lqe2eiducpoqliuv.apps.googleusercontent.com";
+const WEB_CLIENT_ID = "859674051212-0gn7dvr1jslospmpe8mkm4aooqct0f8p.apps.googleusercontent.com";
+// TODO: Replace with your iOS client ID when backend provides it
+const IOS_CLIENT_ID = "859674051212-xxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com";
 
 export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -14,6 +26,75 @@ export default function LoginScreen({ navigation }) {
   const { colors } = useThemeStyles();
   const { login } = useContext(AuthContext);
 
+  // Google discovery document (endpoints)
+  const discovery = useAutoDiscovery("https://accounts.google.com");
+
+  // ✅ Correct redirectUri setup
+  const redirectUri = makeRedirectUri({
+    scheme: "aqua",
+    path: "redirect",
+    useProxy: true,
+  });
+
+  // Build Google request
+  const [request, response, promptAsync] = Google.useAuthRequest(
+    {
+      androidClientId: ANDROID_CLIENT_ID,
+      iosClientId: IOS_CLIENT_ID,
+      webClientId: WEB_CLIENT_ID,
+      responseType: ResponseType.Code,
+      scopes: ["openid", "email", "profile"],
+      redirectUri,
+    },
+    discovery
+  );
+
+  // Handle response
+  useEffect(() => {
+    console.log("Redirect URI being used:", redirectUri);
+    (async () => {
+      if (!response || response.type !== "success" || !discovery || !request) return;
+
+      try {
+        setIsLoading(true);
+
+        const { code } = response.params;
+
+        // Exchange code for tokens
+        const tokenResult = await exchangeCodeAsync(
+          {
+            clientId: Platform.OS === "android" ? ANDROID_CLIENT_ID : Platform.OS === "ios" ? IOS_CLIENT_ID : WEB_CLIENT_ID,
+            code,
+            redirectUri: request.redirectUri,
+            codeVerifier: request.codeVerifier,
+          },
+          discovery
+        );
+
+        const idToken = tokenResult.idToken || tokenResult.id_token;
+        if (!idToken) throw new Error("No id_token returned from Google");
+
+        // Send id_token to your backend
+        // const r = await fetch(`${baseUrl}/user/google-login/`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ id_token: idToken }),
+        // });
+        // const data = await r.json();
+        // if (!r.ok) throw new Error(data.detail || "Google login failed");
+        // await login(data.token);
+
+        await login(idToken); // temp
+        navigation.navigate("tankSetup");
+      } catch (err) {
+        Alert.alert("Google Login Error", err?.message || String(err));
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [response, discovery, request]);
+
+  // Username/password fallback
   const handleSubmit = async () => {
     if (!username || !password) {
       Alert.alert("Error", "Please enter both username and password.");
@@ -22,27 +103,30 @@ export default function LoginScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${baseUrl}/user/login/`, {
+      const res = await fetch(`${baseUrl}/user/login/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Login failed");
-      }
-
-      // Save token to context + AsyncStorage
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Login failed");
       await login(data.token);
-
-      // Navigate to next screen
       navigation.navigate("tankSetup");
     } catch (error) {
       Alert.alert("Login Error", error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGooglePress = async () => {
+    if (!request) {
+      Alert.alert("Please wait", "Google sign-in is still initializing.");
+      return;
+    }
+    try {
+      setIsLoading(true);
+      await promptAsync();
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +153,9 @@ export default function LoginScreen({ navigation }) {
       </View>
 
       <View style={styles.socialIcons}>
-        <FontAwesome name="google" size={30} color="#2cd4c8" />
+        <TouchableOpacity onPress={handleGooglePress} disabled={!request || isLoading}>
+          <FontAwesome name="google" size={30} color="#2cd4c8" />
+        </TouchableOpacity>
         <FontAwesome name="apple" size={30} color="#2cd4c8" />
         <FontAwesome name="linkedin" size={30} color="#2cd4c8" />
       </View>
