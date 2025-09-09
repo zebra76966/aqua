@@ -9,6 +9,7 @@ import styles from "./login.stylesheet";
 import useThemeStyles from "../useThemeStyle";
 import { baseUrl } from "../config";
 import { AuthContext } from "../authcontext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -24,16 +25,21 @@ export default function LoginScreen({ navigation }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const { colors } = useThemeStyles();
-  const { login } = useContext(AuthContext);
+  const { token, login, loading } = useContext(AuthContext);
+
+  // Redirect if token exists
+  useEffect(() => {
+    if (!loading && token) {
+      navigation.replace("MainTabs");
+    }
+  }, [loading, token, navigation]);
 
   // Google discovery document (endpoints)
   const discovery = useAutoDiscovery("https://accounts.google.com");
 
   // ✅ Correct redirectUri setup
   const redirectUri = makeRedirectUri({
-    scheme: "aqua",
-    path: "redirect",
-    useProxy: true,
+    useProxy: true, // forces https://auth.expo.dev/...
   });
 
   // Build Google request
@@ -44,7 +50,7 @@ export default function LoginScreen({ navigation }) {
       webClientId: WEB_CLIENT_ID,
       responseType: ResponseType.Code,
       scopes: ["openid", "email", "profile"],
-      redirectUri,
+      redirectUri, // <- matches the https://auth.expo.dev/... one
     },
     discovery
   );
@@ -110,7 +116,7 @@ export default function LoginScreen({ navigation }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Login failed");
-      await login(data.token);
+      await login(data.access);
       navigation.navigate("tankSetup");
     } catch (error) {
       Alert.alert("Login Error", error.message);
@@ -126,7 +132,8 @@ export default function LoginScreen({ navigation }) {
     }
     try {
       setIsLoading(true);
-      await promptAsync();
+      // ✅ Force Expo Proxy redirect (auth.expo.dev)
+      await promptAsync({ useProxy: true });
     } finally {
       setIsLoading(false);
     }

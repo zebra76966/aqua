@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, Switch, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { AuthContext } from "../../authcontext";
+import { useNavigation } from "@react-navigation/native"; // for navigation
 
 export default function SettingsScreen() {
   const [profileImage, setProfileImage] = useState(require("../../assets/user.jpg"));
@@ -9,6 +11,9 @@ export default function SettingsScreen() {
   const [phone, setPhone] = useState("+91 9876543210");
   const [address, setAddress] = useState("Mumbai, India");
   const [darkMode, setDarkMode] = useState(false);
+
+  const { logout } = useContext(AuthContext); // access logout function
+  const navigation = useNavigation(); // hook for navigation
 
   const handleImagePick = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -33,7 +38,16 @@ export default function SettingsScreen() {
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", onPress: () => Alert.alert("Logged Out!") },
+      {
+        text: "Logout",
+        onPress: async () => {
+          await logout(); // clear token from context + AsyncStorage
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }], // redirect to Login screen
+          });
+        },
+      },
     ]);
   };
 

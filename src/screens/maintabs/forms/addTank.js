@@ -5,10 +5,11 @@ import Slider from "@react-native-community/slider";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import MaterialIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import Entypo from "react-native-vector-icons/Entypo";
-import { baseUrl } from "../config";
-import { AuthContext } from "../authcontext";
+import { baseUrl } from "../../../config";
+import { AuthContext } from "../../../authcontext";
+import { Ionicons } from "@expo/vector-icons";
 
-const TankSetupScreen = ({ navigation }) => {
+const AddTank = ({ navigation }) => {
   const [tankName, setTankName] = useState("");
   const [tankType, setTankType] = useState("");
   const [tankSize, setTankSize] = useState(35.6);
@@ -45,9 +46,8 @@ const TankSetupScreen = ({ navigation }) => {
       const data = await response.json();
 
       if (response.ok) {
-        navigation.navigate("TankScan", {
-          tankDataLocal: { name: tankName }, // send only tank name
-        });
+        Alert.alert("Success", "Tank Added Successfully!");
+        navigation.goBack();
       } else {
         Alert.alert("Error", data?.detail || "Something went wrong.");
         console.error("Tank creation failed:", data);
@@ -61,8 +61,12 @@ const TankSetupScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>AQUA AI</Text>
-
+      <View style={{ ...styles.header }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
+          <Ionicons name="arrow-back" size={24} color="#00CED1" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Add Tank</Text>
+      </View>
       {/* Tank Name */}
       <View style={styles.inputContainer}>
         <Icon name="hashtag" size={16} color="#333" style={styles.icon} />
@@ -130,17 +134,6 @@ const TankSetupScreen = ({ navigation }) => {
           </>
         )}
       </TouchableOpacity>
-
-      <View style={styles.divider}>
-        <View style={styles.line} />
-        <Text style={styles.orText}>or</Text>
-        <View style={styles.line} />
-      </View>
-
-      <TouchableOpacity style={styles.continueButton} onPress={() => navigation.navigate("MainTabs")} disabled={loading}>
-        <Text style={{ ...styles.continueText, backgroundColor: "#000" }}>ADD TANK LATER</Text>
-        <Entypo name="chevron-right" size={22} color="#00CED1" />
-      </TouchableOpacity>
     </View>
   );
 };
@@ -149,7 +142,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    paddingTop: 60,
+
     backgroundColor: "#f9f9f9",
   },
   title: {
@@ -258,6 +251,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     color: "#999",
   },
+  saveBtn: {
+    backgroundColor: "#1f1f1f",
+    padding: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  saveText: { color: "#00CED1", fontWeight: "bold", fontSize: 16 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  backBtn: {
+    padding: 6,
+    marginRight: 10,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
 });
 
-export default TankSetupScreen;
+export default AddTank;

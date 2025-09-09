@@ -9,9 +9,11 @@ import TankScanScreen from "./src/screens/tankScanSreen";
 import TankSuccessScreen from "./src/screens/TankSuccessScreen";
 import PhScanScreen from "./src/screens/phScanSreen";
 import MainTabs from "./src/components/MainTabs";
+import UpdateTankScreen from "./src/screens/maintabs/forms/updateTankScreen";
 import { ThemeProvider } from "./src/themecontext";
 import { AuthProvider } from "./src/authcontext";
 import ImagePreview from "./src/screens/imageprevirew";
+import AddTank from "./src/screens/maintabs/forms/addTank";
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +34,8 @@ export default function App() {
 
             {/* Screens WITH navbar */}
             <Stack.Screen name="MainTabs" component={MainTabs} />
+            {/* <Stack.Screen name="UpdateTank" component={UpdateTankScreen} /> */}
+            {/* <Stack.Screen name="AddTank" component={AddTank} /> */}
           </Stack.Navigator>
         </NavigationContainer>
       </AuthProvider>

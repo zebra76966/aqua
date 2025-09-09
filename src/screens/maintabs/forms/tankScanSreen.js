@@ -3,13 +3,13 @@ import { useRoute } from "@react-navigation/native";
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput, Image, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useNavigation } from "@react-navigation/native";
-import { AuthContext } from "../authcontext";
-import { baseUrl } from "../config";
+import { AuthContext } from "../../../authcontext";
+import { baseUrl } from "../../../config";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import RBSheet from "react-native-raw-bottom-sheet";
 import * as ImageManipulator from "expo-image-manipulator";
 
-const TankScanScreen = () => {
+const TankScanScreenTabs = () => {
   const route = useRoute();
   const { tankDataLocal } = route.params;
   const [facing, setFacing] = useState("back");
@@ -250,7 +250,7 @@ const TankScanScreen = () => {
   );
 };
 
-export default TankScanScreen;
+export default TankScanScreenTabs;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
