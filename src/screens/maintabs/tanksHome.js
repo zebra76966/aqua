@@ -11,7 +11,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 
 export default function TanksScreen() {
   const [searchText, setSearchText] = useState("");
-  const { token } = useContext(AuthContext);
+  const { token, logout } = useContext(AuthContext);
   const [tanksData, setTanksData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [noTanks, setNoTanks] = useState(false);
@@ -52,11 +52,25 @@ export default function TanksScreen() {
             setTanksData(mappedData);
           } else {
             console.error("Failed to fetch tanks:", result);
+            if (result.status_code == 401) {
+              logout(); // clear token from context + AsyncStorage
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Login" }],
+              });
+            }
             setTanksData([]);
             setNoTanks(true);
           }
         } catch (error) {
           console.error("Error fetching tanks:", error);
+          if (error.status == 401) {
+            logout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Login" }],
+            });
+          }
           setTanksData([]);
           setNoTanks(true);
         } finally {

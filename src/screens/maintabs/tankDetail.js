@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useContext } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, FlatList, Image, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from "react-native";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons, AntDesign } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../../authcontext";
 import { baseUrl } from "../../config";
-import AntDesign from "@expo/vector-icons/AntDesign";
 
 const TankDetailsScreen = () => {
   const route = useRoute();
@@ -17,10 +16,10 @@ const TankDetailsScreen = () => {
   const [loading, setLoading] = useState(true);
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [compatibilityModalVisible, setCompatibilityModalVisible] = useState(false);
   const [selectedSpecies, setSelectedSpecies] = useState(null);
+  const [compatibilityIssues, setCompatibilityIssues] = useState([]);
 
-  // add species form fields
   const [className, setClassName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [notes, setNotes] = useState("");
@@ -32,20 +31,41 @@ const TankDetailsScreen = () => {
 
   const fetchTankData = async () => {
     try {
+      setLoading(true);
       const tankRes = await fetch(`${baseUrl}/tanks/tank/${tankId}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const tankJson = await tankRes.json();
-
+      console.log("Fetched tank data:", tankJson);
       const speciesRes = await fetch(`${baseUrl}/tanks/${tankId}/species/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const speciesJson = await speciesRes.json();
 
+      // Fetch compatibility for each species
+      const speciesWithCompatibility = await Promise.all(
+        speciesJson.species.map(async (item) => {
+          const compatibilityRes = await fetch(
+            `${baseUrl}/monitoring/${tankId}/check-compatibility/`, // Use the provided API URL
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`, // Use the token from AuthContext
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ class_name: item.metadata.species_Nomenclature }),
+            }
+          );
+          const compatibilityJson = await compatibilityRes.json();
+          return { ...item, compatibility: compatibilityJson };
+        })
+      );
+
       setTank(tankJson.data);
-      setSpecies(speciesJson.species);
+      setSpecies(speciesWithCompatibility);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching data:", err);
+      Alert.alert("Error", "Failed to load tank data or check compatibility.");
     } finally {
       setLoading(false);
     }
@@ -59,14 +79,11 @@ const TankDetailsScreen = () => {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      console.log(`${baseUrl}/tanks/species/delete/${selectedSpecies.id}`);
       setSpecies(species.filter((s) => s.id !== selectedSpecies.id));
       setDeleteModalVisible(false);
       setLoading(false);
     } catch (err) {
       console.error(err);
-      console.log(err);
       setLoading(false);
       Alert.alert("Error", "Failed to delete species");
     }
@@ -77,7 +94,6 @@ const TankDetailsScreen = () => {
       Alert.alert("Error", "Class name and quantity are required");
       return;
     }
-
     try {
       const body = {
         tank_id: tankId,
@@ -86,7 +102,6 @@ const TankDetailsScreen = () => {
         notes,
         last_scan_image_url: imageUrl,
       };
-
       await fetch(`${baseUrl}/tanks/${tankId}/add-species/`, {
         method: "POST",
         headers: {
@@ -95,17 +110,34 @@ const TankDetailsScreen = () => {
         },
         body: JSON.stringify(body),
       });
-
-      setAddModalVisible(false);
-      setClassName("");
-      setQuantity("");
-      setNotes("");
-      setImageUrl("");
-      fetchTankData(); // refresh species
+      // Don't reset form fields here, assume a successful add leads to navigating back or clearing via context.
+      // setAddModalVisible(false); // If you have an add modal, close it
+      // setClassName("");
+      // setQuantity("");
+      // setNotes("");
+      // setImageUrl("");
+      fetchTankData(); // Refresh species list and compatibility data
     } catch (err) {
       console.error(err);
       Alert.alert("Error", "Failed to add species");
     }
+  };
+
+  const showCompatibilityIssues = (item) => {
+    setSelectedSpecies(item);
+    setCompatibilityIssues(item.compatibility.issues);
+    setCompatibilityModalVisible(true);
+  };
+
+  const getIssueIcon = (issueText) => {
+    if (issueText.toLowerCase().includes("temperature")) {
+      return <MaterialCommunityIcons name="thermometer-alert" size={20} color="#e63946" />;
+    }
+    if (issueText.toLowerCase().includes("ph")) {
+      return <MaterialCommunityIcons name="water-alert" size={20} color="#1d3557" />;
+    }
+    // Add more conditions for other types of issues if needed
+    return <AntDesign name="exclamationcircleo" size={20} color="#ff8c00" />; // Default icon
   };
 
   if (loading) {
@@ -126,7 +158,6 @@ const TankDetailsScreen = () => {
 
   return (
     <View style={{ flex: 1, ...styles.container }}>
-      {/* Tank Header */}
       <View style={styles.tankCard}>
         <MaterialCommunityIcons name="fishbowl" size={40} color={styles.colors.primary} />
         <View style={{ marginLeft: 12, flex: 1 }}>
@@ -138,20 +169,12 @@ const TankDetailsScreen = () => {
         </View>
       </View>
 
-      {/* Species List */}
       <Text style={styles.sectionTitle}>Species</Text>
 
       {species && species.length === 0 ? (
-        <View
-          style={{
-            justifyContent: "center",
-            alignItems: "center",
-            marginTop: 50,
-          }}
-        >
+        <View style={{ justifyContent: "center", alignItems: "center", marginTop: 50 }}>
           <MaterialCommunityIcons name="jellyfish-outline" size={50} color="#858585ff" />
           <Text style={styles.pText}>No Species found :(</Text>
-
           <TouchableOpacity
             style={{
               ...styles.activateButton,
@@ -183,8 +206,8 @@ const TankDetailsScreen = () => {
               {/* Image */}
               <Image source={{ uri: item.last_scan_image_url }} style={styles.speciesImage} />
 
-              {/* Content */}
-              <View style={{ flex: 1, marginLeft: 12 }}>
+              {/* Content Wrapper */}
+              <View style={styles.speciesContent}>
                 <Text style={styles.speciesName}>{item.metadata.species_name}</Text>
                 <Text style={styles.speciesScientific}>{item.metadata.species_Nomenclature}</Text>
 
@@ -210,9 +233,19 @@ const TankDetailsScreen = () => {
                     pH: {item.metadata.ideal_ph_min} - {item.metadata.ideal_ph_max}
                   </Text>
                 </View>
+
+                {/* Compatibility Indicator and Button - moved to bottom of content */}
+                {!item.compatibility?.is_compatible && (
+                  <View style={styles.compatibilityContainer}>
+                    <AntDesign name="warning" size={20} color="red" style={styles.warningIcon} />
+                    <TouchableOpacity style={styles.issuesBtn} onPress={() => showCompatibilityIssues(item)}>
+                      <Text style={styles.issuesBtnText}>Issues</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
 
-              {/* Delete button */}
+              {/* Delete button (remains on the far right) */}
               <TouchableOpacity
                 style={styles.deleteBtn}
                 onPress={() => {
@@ -257,6 +290,32 @@ const TankDetailsScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: "#aaa" }]} onPress={() => setDeleteModalVisible(false)}>
                 <Text style={styles.modalBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Compatibility Issues Modal */}
+      <Modal visible={compatibilityModalVisible} transparent animationType="fade" onRequestClose={() => setCompatibilityModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Compatibility Issues</Text>
+            {compatibilityIssues.length > 0 ? (
+              <ScrollView style={styles.issuesScrollView}>
+                {compatibilityIssues.map((issue, index) => (
+                  <View key={index} style={styles.issueItem}>
+                    {getIssueIcon(issue)}
+                    <Text style={styles.issueText}> {issue}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.issueText}>No issues found.</Text>
+            )}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: "#00CED1" }]} onPress={() => setCompatibilityModalVisible(false)}>
+                <Text style={styles.modalBtnText}>Close</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -331,50 +390,49 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   speciesCard: {
-    flexDirection: "row",
+    flexDirection: "row", // Keep image and content side-by-side
     backgroundColor: "#fff",
     borderRadius: 14,
     padding: 14,
     marginBottom: 14,
-    alignItems: "center",
+    alignItems: "flex-start", // Align items to the top to prevent stretching
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
   },
-
   speciesImage: {
     width: 70,
     height: 70,
     borderRadius: 12,
     backgroundColor: "#f0f0f0",
+    marginRight: 12, // Add some space to the right of the image
   },
-
+  speciesContent: {
+    flex: 1, // Take up remaining space
+    justifyContent: "space-between", // Push compatibility to the bottom
+  },
   speciesName: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#000",
   },
-
   speciesScientific: {
     fontSize: 13,
     fontStyle: "italic",
     color: "#555",
     marginBottom: 6,
   },
-
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 3,
   },
-
   speciesDetail: {
     fontSize: 13,
     color: "#333",
     marginLeft: 6,
   },
-
   deleteBtn: {
     backgroundColor: "#e63946",
     padding: 8,
@@ -382,8 +440,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
+    alignSelf: "flex-start", // Align to top, next to content
   },
-
   pText: {
     fontWeight: "bold",
     fontSize: 18,
@@ -406,6 +464,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 12,
     color: "#000",
+    textAlign: "center",
   },
   input: {
     borderWidth: 1,
@@ -429,6 +488,7 @@ const styles = StyleSheet.create({
   modalBtnText: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 16,
   },
   activateButton: {
     backgroundColor: "#00CED1",
@@ -438,6 +498,41 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   activateText: { color: "#fff", fontWeight: "bold" },
+  compatibilityContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10, // Add space above issues section
+    justifyContent: "flex-start",
+  },
+  warningIcon: {
+    marginRight: 5,
+  },
+  issuesBtn: {
+    backgroundColor: "#e63946",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  issuesBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 12,
+  },
+  issuesScrollView: {
+    maxHeight: 200, // Limit height of the scroll view
+    marginBottom: 15,
+  },
+  issueItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  issueText: {
+    fontSize: 14,
+    color: "#333",
+    marginLeft: 8,
+    flexShrink: 1, // Allow text to wrap
+  },
 });
 
 export default TankDetailsScreen;

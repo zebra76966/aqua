@@ -3,12 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert 
 import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../../authcontext";
 import { baseUrl } from "../../../config";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function UpdateTankScreen({ route, navigation }) {
   const { token } = useContext(AuthContext);
   const { tankId, tankData } = route.params;
 
   const [activeForm, setActiveForm] = useState("tank"); // "tank" | "water"
+
+  console.log("Editing tank:", tankData);
 
   // Tank form state
   const [name, setName] = useState(tankData?.name || "");
@@ -23,6 +26,7 @@ export default function UpdateTankScreen({ route, navigation }) {
   const [nitrite, setNitrite] = useState("");
   const [nitrate, setNitrate] = useState("");
   const [ammonia, setAmmonia] = useState("");
+  const [ph, setPh] = useState("");
 
   const updateTank = async () => {
     try {
@@ -67,6 +71,7 @@ export default function UpdateTankScreen({ route, navigation }) {
           estimated_nitrite_ppm: parseFloat(nitrite),
           estimated_nitrate_ppm: parseFloat(nitrate),
           estimated_ammonia_ppm: parseFloat(ammonia),
+          estimated_ph: parseFloat(ph), // NEW
         }),
       });
 
@@ -96,22 +101,78 @@ export default function UpdateTankScreen({ route, navigation }) {
     </ScrollView>
   );
 
-  const renderWaterForm = () => (
-    <ScrollView>
-      <TextInput style={styles.input} placeholder="Temperature (°C)" value={temperature} onChangeText={setTemperature} keyboardType="numeric" />
-      <TextInput style={styles.input} placeholder="Oxygen (mg/L)" value={oxygen} onChangeText={setOxygen} keyboardType="numeric" />
-      <TextInput style={styles.input} placeholder="Nitrite (ppm)" value={nitrite} onChangeText={setNitrite} keyboardType="numeric" />
-      <TextInput style={styles.input} placeholder="Nitrate (ppm)" value={nitrate} onChangeText={setNitrate} keyboardType="numeric" />
-      <TextInput style={styles.input} placeholder="Ammonia (ppm)" value={ammonia} onChangeText={setAmmonia} keyboardType="numeric" />
+  const renderWaterForm = () => {
+    const hasValues = temperature.trim() !== "" || oxygen.trim() !== "" || nitrite.trim() !== "" || nitrate.trim() !== "" || ammonia.trim() !== "" || ph.trim() !== "";
 
-      <TouchableOpacity style={styles.saveBtn} onPress={updateWaterParams}>
-        <Text style={styles.saveText}>Update Water Parameters</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
+    const renderInput = (label, value, setter, placeholder) => (
+      <View style={{ marginBottom: 16 }}>
+        <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 6 }}>{label}</Text>
+        <TextInput style={styles.input} placeholder={placeholder} value={value} onChangeText={setter} keyboardType="numeric" />
+      </View>
+    );
+
+    return (
+      <ScrollView>
+        {/* Scan button */}
+        <TouchableOpacity
+          style={{
+            ...styles.activateButton,
+            flexDirection: "row",
+            justifyContent: "center",
+            paddingLeft: 20,
+            marginBottom: 50,
+            borderRadius: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            elevation: 6,
+            backgroundColor: "#ff8c00",
+          }}
+          onPress={() =>
+            navigation.navigate("PhScanScreen", {
+              onScanComplete: (result) => {
+                if (result.estimated_ph) setPh(String(result.estimated_ph));
+                if (result.estimated_oxygen_mgL) setOxygen(String(result.estimated_oxygen_mgL));
+                if (result.estimated_nitrite_ppm) setNitrite(String(result.estimated_nitrite_ppm));
+                if (result.estimated_nitrate_ppm) setNitrate(String(result.estimated_nitrate_ppm));
+                if (result.estimated_ammonia_ppm) setAmmonia(String(result.estimated_ammonia_ppm));
+              },
+            })
+          }
+        >
+          <Text
+            style={{
+              ...styles.activateText,
+              color: "#000",
+              marginRight: 20,
+              fontSize: 18,
+            }}
+          >
+            Scan Ph Strip
+          </Text>
+          <MaterialCommunityIcons name="cube-scan" size={24} color="#000" />
+        </TouchableOpacity>
+
+        {renderInput("Temperature (°C)", temperature, setTemperature, "Enter temperature")}
+        {renderInput("Oxygen (mg/L)", oxygen, setOxygen, "Enter oxygen")}
+        {renderInput("Nitrite (ppm)", nitrite, setNitrite, "Enter nitrite")}
+        {renderInput("Nitrate (ppm)", nitrate, setNitrate, "Enter nitrate")}
+        {renderInput("Ammonia (ppm)", ammonia, setAmmonia, "Enter ammonia")}
+        {renderInput("pH", ph, setPh, "Enter pH")}
+
+        {/* Conditionally render update button */}
+        {hasValues && (
+          <TouchableOpacity style={styles.saveBtn} onPress={updateWaterParams}>
+            <Text style={styles.saveText}>Update Water Parameters</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    );
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={{ ...styles.container, paddingBottom: 100 }}>
       {/* Header with back button */}
       <View style={{ ...styles.header }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
@@ -136,6 +197,13 @@ export default function UpdateTankScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  activateButton: {
+    backgroundColor: "#00CED1",
+    padding: 8,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 5,
+  },
   container: { flex: 1, backgroundColor: "#F8F8F8", padding: 16 },
   header: {
     flexDirection: "row",

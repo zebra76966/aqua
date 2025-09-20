@@ -99,11 +99,13 @@ const PhScanScreen = () => {
 
   const handleConfirm = () => {
     setModalVisible(false);
-    navigation.navigate("TankSuccess", {
-      tankData: route.params?.tankData || {},
-      tankName: route.params?.tankName || "My Tank",
-      phResult: { ...scanResult, estimated_ph: pHscale },
-    });
+    if (route.params?.onScanComplete) {
+      route.params.onScanComplete({
+        ...scanResult,
+        estimated_ph: pHscale,
+      });
+    }
+    navigation.goBack(); // ✅ return to form
   };
 
   const handleRetake = () => {
