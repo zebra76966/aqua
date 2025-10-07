@@ -13,7 +13,7 @@ const AddTank = ({ navigation }) => {
   const [tankName, setTankName] = useState("");
   const [tankType, setTankType] = useState("");
   const [tankSize, setTankSize] = useState(35.6);
-  const [sizeUnit, setSizeUnit] = useState("G"); // Default Gallons
+  const [sizeUnit, setSizeUnit] = useState("L"); // Default Gallons
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -109,11 +109,11 @@ const AddTank = ({ navigation }) => {
 
       {/* Toggle Gallons / Litres */}
       <View style={styles.toggleContainer}>
-        <TouchableOpacity style={[styles.toggleButton, sizeUnit === "G" && styles.toggleActive]} onPress={() => setSizeUnit("G")}>
-          <Text style={sizeUnit === "G" ? styles.toggleTextActive : styles.toggleText}>Gallons</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={[styles.toggleButton, sizeUnit === "L" && styles.toggleActive]} onPress={() => setSizeUnit("L")}>
           <Text style={sizeUnit === "L" ? styles.toggleTextActive : styles.toggleText}>Litres</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.toggleButton, sizeUnit === "G" && styles.toggleActive]} onPress={() => setSizeUnit("G")}>
+          <Text style={sizeUnit === "G" ? styles.toggleTextActive : styles.toggleText}>Gallons</Text>
         </TouchableOpacity>
       </View>
 

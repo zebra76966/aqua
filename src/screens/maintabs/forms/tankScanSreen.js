@@ -29,19 +29,38 @@ const TankScanScreenTabs = () => {
   }, []);
 
   // --- CAMERA CAPTURE ---
+  // const handleScan = async () => {
+  //   try {
+  //     setScanned(true);
+  //     if (!cameraRef.current) throw new Error("Camera not ready");
+
+  //     let photo = await cameraRef.current.takePictureAsync({
+  //       quality: 0.5,
+  //       skipProcessing: true,
+  //     });
+
+  //     const manipulated = await ImageManipulator.manipulateAsync(photo.uri, [{ resize: { width: 1024 } }], { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG });
+
+  //     uploadImage(manipulated.uri);
+  //   } catch (error) {
+  //     alert(error.message || "Failed to capture image.");
+  //     setScanned(false);
+  //   }
+  // };
+
   const handleScan = async () => {
     try {
       setScanned(true);
       if (!cameraRef.current) throw new Error("Camera not ready");
 
+      // Capture full-quality photo
       let photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5,
-        skipProcessing: true,
+        quality: 1, // ✅ full quality
+        skipProcessing: false, // ✅ allow camera to handle color correction, etc.
       });
 
-      const manipulated = await ImageManipulator.manipulateAsync(photo.uri, [{ resize: { width: 1024 } }], { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG });
-
-      uploadImage(manipulated.uri);
+      // Option 1: Upload directly (best quality)
+      uploadImage(photo.uri);
     } catch (error) {
       alert(error.message || "Failed to capture image.");
       setScanned(false);
@@ -59,7 +78,7 @@ const TankScanScreenTabs = () => {
         type: "application/octet-stream",
       });
 
-      const response = await fetch(`${baseUrl}/ai-model/inference/`, {
+      const response = await fetch(`${baseUrl}/ai-model/inference/multimodel/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -68,23 +87,26 @@ const TankScanScreenTabs = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail || "Upload failed");
 
-      const arrayData = Array.isArray(result) ? result : [result];
+      // ✅ NEW DATA STRUCTURE MAPPING
+      const predictions = result?.data?.predictions || [];
 
-      const mappedData = arrayData.map((item) => {
-        const predictions = item?.data?.predictions || {};
-        return {
-          class_name: predictions.class_name || "Unknown",
-          confidence: predictions.confidence || 0,
-          metadata: {
-            species_name: predictions.metadata?.species_name || "",
-            species_Nomenclature: predictions.metadata?.species_Nomenclature || "",
-            max_size_cm: predictions.metadata?.max_size_cm || "",
-          },
-          image_url: item?.data?.image_url || null,
-          quantity: "1", // default quantity
-          notes: "",
-        };
-      });
+      console.log("sccanned data:", result.data);
+      const mappedData = predictions.map((pred) => ({
+        class_name: pred.class_name || "Unknown",
+        confidence: pred.confidence || 0,
+        metadata: {
+          species_name: pred.metadata?.species_name || pred.species?.name || "Unknown Species",
+          species_Nomenclature: pred.metadata?.species_Nomenclature || pred.species?.scientific_name || "",
+          max_size_cm: pred.metadata?.max_size_cm || pred.metadata?.maximum_size || "",
+          summary: pred.metadata?.summary || "",
+          distribution: pred.metadata?.distribution || "",
+          category: pred.species?.category || "",
+        },
+        // Prefer AI image, else fallback
+        image_url: pred.metadata?.image_url || result?.data?.image_url || null,
+        quantity: "1",
+        notes: "",
+      }));
 
       setScanData(mappedData);
       sheetRef.current.open();
@@ -96,6 +118,53 @@ const TankScanScreenTabs = () => {
       setScanned(false);
     }
   };
+  // const uploadImage = async (uri) => {
+  //   setIsUploading(true);
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("image", {
+  //       uri: uri.startsWith("file://") ? uri : `file://${uri}`,
+  //       name: "scan.jpg",
+  //       type: "application/octet-stream",
+  //     });
+
+  //     const response = await fetch(`${baseUrl}/ai-model/inference/`, {
+  //       method: "POST",
+  //       headers: { Authorization: `Bearer ${token}` },
+  //       body: formData,
+  //     });
+
+  //     const result = await response.json();
+  //     if (!response.ok) throw new Error(result.detail || "Upload failed");
+
+  //     const arrayData = Array.isArray(result) ? result : [result];
+
+  //     const mappedData = arrayData.map((item) => {
+  //       const predictions = item?.data?.predictions || {};
+  //       return {
+  //         class_name: predictions.class_name || "Unknown",
+  //         confidence: predictions.confidence || 0,
+  //         metadata: {
+  //           species_name: predictions.metadata?.species_name || "",
+  //           species_Nomenclature: predictions.metadata?.species_Nomenclature || "",
+  //           max_size_cm: predictions.metadata?.max_size_cm || "",
+  //         },
+  //         image_url: item?.data?.image_url || null,
+  //         quantity: "1", // default quantity
+  //         notes: "",
+  //       };
+  //     });
+
+  //     setScanData(mappedData);
+  //     sheetRef.current.open();
+  //   } catch (error) {
+  //     alert(error.message);
+  //     setScanned(false);
+  //   } finally {
+  //     setIsUploading(false);
+  //     setScanned(false);
+  //   }
+  // };
 
   // --- SUBMIT ALL SPECIES ---
   const handleSubmit = async () => {
@@ -110,6 +179,8 @@ const TankScanScreenTabs = () => {
           last_scan_image_url: fish.image_url,
         };
 
+        console.log("payload", payload);
+
         console.log(fish);
         const res = await fetch(`${baseUrl}/tanks/${tankDataLocal.id}/add-species/`, {
           method: "POST",
@@ -119,8 +190,6 @@ const TankScanScreenTabs = () => {
           },
           body: JSON.stringify(payload),
         });
-
-        console.log(payload);
 
         if (!res.ok) {
           const errorText = await res.text(); // safer
@@ -141,13 +210,25 @@ const TankScanScreenTabs = () => {
     }
   };
 
+  const getConfidenceColor = (value) => {
+    if (value > 0.85) return "rgba(46,204,113,0.9)"; // green
+    if (value > 0.6) return "rgba(241,196,15,0.9)"; // yellow
+    return "rgba(231,76,60,0.9)"; // red
+  };
+
   // --- RENDER FISH FORM ---
   const renderFishCard = (fish, index) => {
     return (
       <View key={index} style={styles.card}>
         {fish.image_url && (
-          <View style={{ alignItems: "center", marginBottom: 10 }}>
+          <View style={styles.imageContainer}>
             <Image source={{ uri: fish.image_url }} style={styles.fishImage} resizeMode="cover" />
+
+            {/* Confidence Badge */}
+            <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(fish.confidence) }]}>
+              <Icon name="shield-check" size={16} color="#fff" style={{ marginRight: 4 }} />
+              <Text style={styles.confidenceText}>{(fish.confidence * 100).toFixed(1)}%</Text>
+            </View>
           </View>
         )}
 
@@ -253,6 +334,30 @@ const TankScanScreenTabs = () => {
 export default TankScanScreenTabs;
 
 const styles = StyleSheet.create({
+  imageContainer: {
+    alignItems: "center",
+    marginBottom: 10,
+    position: "relative",
+  },
+
+  confidenceBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 14,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+
+  confidenceText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 12,
+  },
+
   container: { flex: 1, backgroundColor: "#000" },
   camera: { flex: 1 },
   overlay: {

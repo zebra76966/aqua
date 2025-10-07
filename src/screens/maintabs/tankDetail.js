@@ -257,6 +257,7 @@ const TankDetailsScreen = () => {
               </TouchableOpacity>
             </View>
           )}
+          contentContainerStyle={{ paddingBottom: 120 }}
         />
       )}
 
