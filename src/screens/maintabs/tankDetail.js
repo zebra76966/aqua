@@ -169,6 +169,49 @@ const TankDetailsScreen = () => {
         </View>
       </View>
 
+      {/* Water Parameters Section */}
+      {tank.latest_water_parameters && (
+        <View style={styles.waterParamsCard}>
+          <Text style={styles.sectionTitle}>Water Parameters</Text>
+
+          <View style={styles.paramRow}>
+            <Feather name="droplet" size={18} color="#0077b6" />
+            <Text style={styles.paramLabel}>pH:</Text>
+            <Text style={styles.paramValue}>{tank.latest_water_parameters.estimated_ph}</Text>
+          </View>
+
+          <View style={styles.paramRow}>
+            <Feather name="thermometer" size={18} color="#e63946" />
+            <Text style={styles.paramLabel}>Temperature:</Text>
+            <Text style={styles.paramValue}>{tank.latest_water_parameters.temperature}°C</Text>
+          </View>
+
+          <View style={styles.paramRow}>
+            <MaterialCommunityIcons name="fish" size={18} color="#1d3557" />
+            <Text style={styles.paramLabel}>Oxygen:</Text>
+            <Text style={styles.paramValue}>{tank.latest_water_parameters.estimated_oxygen_mgL} mg/L</Text>
+          </View>
+
+          <View style={styles.paramRow}>
+            <MaterialCommunityIcons name="chemical-weapon" size={18} color="#6a040f" />
+            <Text style={styles.paramLabel}>Ammonia:</Text>
+            <Text style={styles.paramValue}>{tank.latest_water_parameters.estimated_ammonia_ppm} ppm</Text>
+          </View>
+
+          <View style={styles.paramRow}>
+            <MaterialCommunityIcons name="bottle-tonic-skull" size={18} color="#ff8c00" />
+            <Text style={styles.paramLabel}>Nitrite:</Text>
+            <Text style={styles.paramValue}>{tank.latest_water_parameters.estimated_nitrite_ppm} ppm</Text>
+          </View>
+
+          <View style={styles.paramRow}>
+            <MaterialCommunityIcons name="bottle-tonic" size={18} color="#2a9d8f" />
+            <Text style={styles.paramLabel}>Nitrate:</Text>
+            <Text style={styles.paramValue}>{tank.latest_water_parameters.estimated_nitrate_ppm} ppm</Text>
+          </View>
+        </View>
+      )}
+
       <Text style={styles.sectionTitle}>Species</Text>
 
       {species && species.length === 0 ? (
@@ -327,6 +370,31 @@ const TankDetailsScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  waterParamsCard: {
+    backgroundColor: "#f0f8ff",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  paramRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 4,
+  },
+  paramLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginLeft: 6,
+    width: 110,
+  },
+  paramValue: {
+    fontSize: 14,
+    color: "#000",
+    fontWeight: "bold",
+  },
+
   addButton: {
     width: 60,
     height: 60,
