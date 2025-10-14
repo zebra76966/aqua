@@ -21,12 +21,12 @@ export default function UpdateTankScreen({ route, navigation }) {
   const [notes, setNotes] = useState(tankData?.notes || "");
 
   // Water parameters form state
-  const [temperature, setTemperature] = useState("");
-  const [oxygen, setOxygen] = useState("");
-  const [nitrite, setNitrite] = useState("");
-  const [nitrate, setNitrate] = useState("");
-  const [ammonia, setAmmonia] = useState("");
-  const [ph, setPh] = useState("");
+  const [temperature, setTemperature] = useState(String(tankData?.waterParams?.temperature ?? ""));
+  const [oxygen, setOxygen] = useState(String(tankData?.waterParams?.estimated_oxygen_mgL ?? ""));
+  const [nitrite, setNitrite] = useState(String(tankData?.waterParams?.estimated_nitrite_ppm ?? ""));
+  const [nitrate, setNitrate] = useState(String(tankData?.waterParams?.estimated_nitrate_ppm ?? ""));
+  const [ammonia, setAmmonia] = useState(String(tankData?.waterParams?.estimated_ammonia_ppm ?? ""));
+  const [ph, setPh] = useState(String(tankData?.waterParams?.estimated_ph ?? ""));
 
   const updateTank = async () => {
     try {

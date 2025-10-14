@@ -8,6 +8,25 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [activeTankId, setActiveTankId] = useState(null);
+
+  useEffect(() => {
+    // Load saved tank on app start
+    AsyncStorage.getItem("activeTankId").then((id) => {
+      if (id) setActiveTankId(id);
+    });
+  }, []);
+
+  const activateTank = async (tankId) => {
+    setActiveTankId(tankId);
+    await AsyncStorage.setItem("activeTankId", String(tankId));
+  };
+
+  const clearActiveTank = async () => {
+    setActiveTankId(null);
+    await AsyncStorage.removeItem("activeTankId");
+  };
+
   useEffect(() => {
     // Load token from storage when app starts
     const loadToken = async () => {
@@ -33,5 +52,5 @@ export const AuthProvider = ({ children }) => {
     await AsyncStorage.removeItem("authToken");
   };
 
-  return <AuthContext.Provider value={{ token, login, logout, loading }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ token, login, logout, loading, activeTankId, activateTank, clearActiveTank }}>{children}</AuthContext.Provider>;
 };

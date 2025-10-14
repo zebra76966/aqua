@@ -4,7 +4,7 @@ import { Feather, MaterialCommunityIcons, AntDesign } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../../authcontext";
 import { baseUrl } from "../../config";
-
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 const TankDetailsScreen = () => {
   const route = useRoute();
   const { token } = useContext(AuthContext);
@@ -170,7 +170,7 @@ const TankDetailsScreen = () => {
       </View>
 
       {/* Water Parameters Section */}
-      {tank.latest_water_parameters && (
+      {/* {tank.latest_water_parameters && (
         <View style={styles.waterParamsCard}>
           <Text style={styles.sectionTitle}>Water Parameters</Text>
 
@@ -210,7 +210,7 @@ const TankDetailsScreen = () => {
             <Text style={styles.paramValue}>{tank.latest_water_parameters.estimated_nitrate_ppm} ppm</Text>
           </View>
         </View>
-      )}
+      )} */}
 
       <Text style={styles.sectionTitle}>Species</Text>
 
@@ -315,6 +315,18 @@ const TankDetailsScreen = () => {
         }}
       >
         <MaterialCommunityIcons name="cube-scan" size={26} color="#fff" />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.addButton, { bottom: 180, backgroundColor: "#00b7ffff" }]}
+        onPress={() => {
+          navigation.navigate("DiseaseScanScreen", {
+            tankDataLocal: tank,
+            tankId: tank.id,
+          });
+        }}
+      >
+        <FontAwesome6 name="disease" size={26} color="#fff" />
       </TouchableOpacity>
 
       {/* Delete Confirm Modal */}

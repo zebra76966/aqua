@@ -1,170 +1,359 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from "react-native";
-import { AntDesign, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import React, { useEffect, useState, useContext, useCallback, useRef } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Animated, Easing } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { AntDesign, Ionicons, Feather } from "@expo/vector-icons";
+import Svg, { Circle } from "react-native-svg";
+import { AuthContext } from "../authcontext";
+import { baseUrl } from "../config";
 
 export default function DashboardScreen() {
-  return (
-    <View>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
-        {/* Header */}
+  const { token, activeTankId } = useContext(AuthContext);
+  const [tankData, setTankData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [selectedSection, setSelectedSection] = useState(null);
 
-        {/* Tank Info */}
-        <View style={styles.tankHeader}>
-          <Text style={styles.tankTitle}>Tank #1</Text>
-          <View style={styles.tankSettingsIcons}>
-            <Feather name="settings" size={20} color="black" />
-          </View>
-        </View>
+  // Animated values
+  const animatedValue = useRef(new Animated.Value(0)).current;
+  const [displayPercent, setDisplayPercent] = useState(0);
 
-        {/* Health Circle */}
-        <View style={styles.healthSection}>
-          <View style={styles.healthCircle}>
-            <Text style={styles.healthPercent}>85%</Text>
-            <Text style={styles.healthText}>Healthy</Text>
-          </View>
-          <View style={styles.weekHealthTextBox}>
-            <Text style={styles.weekPercent}>30%</Text>
-            <Text style={styles.weekText}>Last 7 days</Text>
-          </View>
-        </View>
+  // ✅ Fetch Tank Data
+  const fetchTankData = useCallback(async () => {
+    if (!activeTankId || !token) return;
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const response = await fetch(`${baseUrl}/monitoring/${activeTankId}/health/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        {/* Maintenance Task */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Feather name="tool" size={18} color="#00CED1" />
-            <Text style={styles.cardTitle}>Maintenance Task</Text>
-          </View>
-          <Text style={styles.cardContent}>Water change required.</Text>
-          <Text style={styles.cardDate}>Today</Text>
-        </View>
+      const json = await response.json();
+      console.log("Active Tank Response:", json);
 
-        {/* Quick Add Log */}
-        <TouchableOpacity style={styles.quickAddLog}>
-          <Text style={styles.quickAddText}>QUICK ADD LOG</Text>
-          <AntDesign name="pluscircle" size={20} color="white" style={{ marginLeft: 8 }} />
+      if (json.status_code === 400 || !json.data || Object.keys(json.data).length === 0) {
+        setErrorMessage(json.message || "No data available. Please run a water scan first.");
+        setTankData(null);
+      } else {
+        setTankData(json.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tank health:", error);
+      setErrorMessage("Failed to load tank data. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTankId, token]);
+
+  // Animate Circle
+  const animateHealth = (value) => {
+    animatedValue.setValue(0); // reset before animating
+    Animated.timing(animatedValue, {
+      toValue: value,
+      duration: 1200,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false,
+    }).start();
+  };
+
+  // Update displayed percent text
+  useEffect(() => {
+    const listener = animatedValue.addListener(({ value }) => {
+      setDisplayPercent(Math.round(value));
+    });
+    return () => animatedValue.removeListener(listener);
+  }, []);
+
+  // Fetch once when mounted
+  useEffect(() => {
+    fetchTankData();
+  }, [fetchTankData]);
+
+  // Animate every time screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchTankData();
+    }, [fetchTankData])
+  );
+
+  // Animate circle when tankData changes
+  useEffect(() => {
+    if (tankData) {
+      animateHealth(tankData.overall_health);
+    }
+  }, [tankData]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#00CED1" />
+        <Text style={{ marginTop: 10 }}>Loading tank health...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (errorMessage) {
+    return (
+      <View style={styles.loaderContainer}>
+        <Feather name="alert-triangle" size={22} color="#ff4d4d" />
+        <Text style={{ marginTop: 10, color: "#333", textAlign: "center", paddingHorizontal: 20 }}>{errorMessage}</Text>
+        <TouchableOpacity style={[styles.quickAddLog, { marginTop: 20 }]} onPress={fetchTankData}>
+          <Text style={styles.quickAddText}>REFRESH</Text>
         </TouchableOpacity>
+      </View>
+    );
+  }
 
-        {/* Alerts */}
-        <View style={[styles.card, { backgroundColor: "#fff5f5" }]}>
-          <View style={styles.cardHeader}>
-            <Feather name="alert-triangle" size={18} color="#ff4d4d" />
-            <Text style={styles.cardTitle}>Alerts</Text>
+  if (!tankData) {
+    return (
+      <View style={styles.loaderContainer}>
+        <Text>Unable to load tank data.</Text>
+      </View>
+    );
+  }
+
+  const { tank_name, overall_health, water_health_score, species_health_score, alerts, water_parameters, species_compatibility } = tankData;
+
+  // Circle Config
+  const circleSize = 150;
+  const strokeWidth = 10;
+  const radius = (circleSize - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  const getHealthColor = () => {
+    if (overall_health > 70) return "#4CAF50";
+    if (overall_health > 40) return "#FFC107";
+    return "#F44336";
+  };
+
+  const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+  const animatedStroke = animatedValue.interpolate({
+    inputRange: [0, 100],
+    outputRange: [circumference, 0],
+  });
+
+  // Modal content
+  const renderModalContent = () => {
+    if (!selectedSection) return null;
+    switch (selectedSection) {
+      case "water":
+        return (
+          <View>
+            <Text style={styles.modalTitle}>Water Parameters</Text>
+            {Object.entries(water_parameters).map(([key, value]) => (
+              <Text key={key} style={styles.modalText}>
+                {key.replace(/_/g, " ")}: <Text style={{ fontWeight: "bold" }}>{value}</Text>
+              </Text>
+            ))}
           </View>
-          <Text style={{ color: "red" }}>pH levels are High</Text>
-          <Text style={{ color: "#ffa500" }}>Compatibility Issue in tank1</Text>
+        );
+      case "alerts":
+        return (
+          <View>
+            <Text style={styles.modalTitle}>Alerts</Text>
+            {alerts.length ? (
+              alerts.map((a, i) => (
+                <Text key={i} style={[styles.modalText, { color: "red" }]}>
+                  • {a}
+                </Text>
+              ))
+            ) : (
+              <Text style={{ color: "green" }}>No alerts! All good 🎉</Text>
+            )}
+          </View>
+        );
+      case "species":
+        return (
+          <View>
+            <Text style={styles.modalTitle}>Species Compatibility</Text>
+            {species_compatibility.map((s, i) => (
+              <View key={i} style={{ marginBottom: 8 }}>
+                <Text style={styles.modalText}>{s.species_name}</Text>
+                <Text style={{ color: s.is_compatible ? "green" : "red" }}>{s.is_compatible ? "Compatible" : "Issues:"}</Text>
+                {!s.is_compatible &&
+                  s.issues.map((issue, idx) => (
+                    <Text key={idx} style={{ color: "red", marginLeft: 8 }}>
+                      - {issue}
+                    </Text>
+                  ))}
+              </View>
+            ))}
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
+      {/* Tank Header */}
+      <View style={styles.tankHeader}>
+        <Text style={styles.tankTitle}>{tank_name}</Text>
+        <TouchableOpacity>
+          <Feather name="settings" size={20} color="black" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Health Circle */}
+      <View style={styles.healthSection}>
+        <View style={styles.circleWrapper}>
+          <Svg width={circleSize} height={circleSize}>
+            <Circle stroke="#fff" fill="transparent" cx={circleSize / 2} cy={circleSize / 2} r={radius} strokeWidth={strokeWidth} />
+            {/* Animated Health Circle */}
+            <AnimatedCircle
+              stroke={getHealthColor()}
+              fill="transparent"
+              cx={circleSize / 2}
+              cy={circleSize / 2}
+              r={radius}
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={animatedStroke}
+              strokeLinecap="round"
+              rotation="-90"
+              origin={`${circleSize / 2}, ${circleSize / 2}`}
+            />
+          </Svg>
+          <View style={styles.circleContent}>
+            <Text style={[styles.healthPercent, { color: getHealthColor() }]}>{overall_health}%</Text>
+            <Text style={styles.healthText}>{overall_health > 70 ? "Healthy" : overall_health > 40 ? "Moderate" : "Poor"}</Text>
+          </View>
         </View>
 
-        {/* Recommended Products */}
-        <View style={styles.recommendHeaderRow}>
-          <Text style={styles.sectionTitle}>RECOMMENDED PRODUCTS</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>SEE ALL</Text>
-          </TouchableOpacity>
+        <View style={styles.weekHealthTextBox}>
+          <Text style={styles.weekPercent}>{water_health_score}%</Text>
+          <Text style={styles.weekText}>Water Health</Text>
+          <Text style={[styles.weekPercent, { marginTop: 10 }]}>{species_health_score}%</Text>
+          <Text style={styles.weekText}>Species Health</Text>
         </View>
+      </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.productScroll}>
-          <View style={styles.productCard}>
-            <Image source={require("../assets/prod1.jpg")} style={styles.productImage} />
-            <Text style={styles.productTitle}>Product #1</Text>
-            <Text style={styles.productDesc}>small desc...</Text>
-            <Text style={styles.productPrice}>$582.25</Text>
-            <View style={styles.productButtons}>
-              <TouchableOpacity style={styles.cartButton}>
-                <Text style={styles.buttonText}>ADD TO CART</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.buyButton}>
-                <Text style={styles.buttonText}>BUY NOW</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+      {/* Cards */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Feather name="droplet" size={18} color="#00CED1" />
+          <Text style={styles.cardTitle}>Water Parameters</Text>
+        </View>
+        <Text numberOfLines={2} ellipsizeMode="tail" style={styles.cardContent}>
+          {Object.entries(water_parameters)
+            .slice(0, 2)
+            .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
+            .join(", ")}
+        </Text>
+        <TouchableOpacity onPress={() => setSelectedSection("water")}>
+          <Text style={styles.viewMore}>View Details</Text>
+        </TouchableOpacity>
+      </View>
 
-          <View style={styles.productCard}>
-            <Image source={require("../assets/prod2.jpg")} style={styles.productImage} />
-            <Text style={styles.productTitle}>Product #2</Text>
-            <Text style={styles.productDesc}>small desc...</Text>
-            <Text style={styles.productPrice}>$582.25</Text>
-            <View style={styles.productButtons}>
-              <TouchableOpacity style={styles.cartButton}>
-                <Text style={styles.buttonText}>ADD TO CART</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.buyButton}>
-                <Text style={styles.buttonText}>BUY NOW</Text>
-              </TouchableOpacity>
-            </View>
+      <View style={[styles.card, { backgroundColor: "#fff5f5" }]}>
+        <View style={styles.cardHeader}>
+          <Feather name="alert-triangle" size={18} color="#ff4d4d" />
+          <Text style={[styles.cardTitle, { color: "#ff4d4d" }]}>Alerts</Text>
+        </View>
+        <Text numberOfLines={2} style={{ color: "#ff4d4d" }}>
+          {alerts.length ? alerts.join(", ") : "No alerts! All good 🎉"}
+        </Text>
+        <TouchableOpacity onPress={() => setSelectedSection("alerts")}>
+          <Text style={styles.viewMore}>View Details</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="fish-outline" size={18} color="#00CED1" />
+          <Text style={styles.cardTitle}>Species Compatibility</Text>
+        </View>
+        <Text numberOfLines={2} style={styles.cardContent}>
+          {species_compatibility.map((s) => s.species_name).join(", ")}
+        </Text>
+        <TouchableOpacity onPress={() => setSelectedSection("species")}>
+          <Text style={styles.viewMore}>View Details</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Quick Add Log */}
+      <TouchableOpacity style={styles.quickAddLog}>
+        <Text style={styles.quickAddText}>QUICK ADD LOG</Text>
+        <AntDesign name="pluscircle" size={20} color="white" style={{ marginLeft: 8 }} />
+      </TouchableOpacity>
+
+      {/* Modal */}
+      <Modal animationType="slide" transparent visible={!!selectedSection} onRequestClose={() => setSelectedSection(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {renderModalContent()}
+            <TouchableOpacity onPress={() => setSelectedSection(null)} style={styles.closeButton}>
+              <Text style={{ color: "white", fontWeight: "bold" }}>CLOSE</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.productCard}>
-            <Image source={require("../assets/prod3.jpg")} style={styles.productImage} />
-            <Text style={styles.productTitle}>Product #2</Text>
-            <Text style={styles.productDesc}>small desc...</Text>
-            <Text style={styles.productPrice}>$582.25</Text>
-            <View style={styles.productButtons}>
-              <TouchableOpacity style={styles.cartButton}>
-                <Text style={styles.buttonText}>ADD TO CART</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.buyButton}>
-                <Text style={styles.buttonText}>BUY NOW</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </ScrollView>
-    </View>
+        </View>
+      </Modal>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { backgroundColor: "#F8F8F8", padding: 16 },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 50,
-    paddingHorizontal: 16,
-    height: 100,
-    backgroundColor: "#F8F8F8",
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    zIndex: 10,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-
-  logo: { width: 40, height: 40 },
-  headerIcons: { flexDirection: "row", alignItems: "center" },
-  icon: { marginRight: 10 },
-  profileImage: { width: 30, height: 30, borderRadius: 15 },
+  loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center", height: "100%", padding: 16 },
   tankHeader: { flexDirection: "row", justifyContent: "space-between", marginTop: 20 },
   tankTitle: { fontWeight: "bold", fontSize: 18 },
-  tankSettingsIcons: {},
   healthSection: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: 20 },
-  healthCircle: { alignItems: "center", justifyContent: "center", width: 150, height: 150, borderRadius: 75, borderWidth: 10, borderColor: "#00CED1", borderRightColor: "#000" },
-  healthPercent: { fontSize: 28, fontWeight: "bold", color: "#00CED1" },
-  healthText: { color: "#888" },
+  circleWrapper: { justifyContent: "center", alignItems: "center" },
+  circleContent: { position: "absolute", alignItems: "center" },
+  healthPercent: { fontSize: 28, fontWeight: "bold" },
+  healthText: { color: "#666" },
   weekHealthTextBox: { alignItems: "center" },
   weekPercent: { fontWeight: "bold", color: "#00CED1", fontSize: 16 },
   weekText: { color: "#777", fontSize: 12 },
-  card: { backgroundColor: "white", padding: 16, borderRadius: 12, marginBottom: 20, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10 },
+  card: {
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
   cardTitle: { marginLeft: 8, fontWeight: "bold" },
-  cardContent: { fontSize: 14, marginVertical: 4 },
-  cardDate: { color: "#FFD700", fontSize: 12 },
-  quickAddLog: { flexDirection: "row", justifyContent: "center", alignItems: "center", backgroundColor: "#00CED1", padding: 12, borderRadius: 30, marginBottom: 20 },
+  cardContent: { fontSize: 14, marginVertical: 2 },
+  viewMore: { color: "#00CED1", fontWeight: "bold", marginTop: 8 },
+  quickAddLog: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#00CED1",
+    padding: 12,
+    borderRadius: 30,
+    marginBottom: 20,
+  },
   quickAddText: { color: "white", fontWeight: "bold" },
-  recommendHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  sectionTitle: { fontWeight: "bold" },
-  seeAll: { color: "#00CED1", fontWeight: "bold" },
-  productScroll: { paddingVertical: 10 },
-  productCard: { backgroundColor: "white", width: 200, borderRadius: 12, padding: 10, marginRight: 16, position: "relative" },
-  productImage: { width: "100%", height: 90, borderRadius: 8 },
-  productTitle: { fontWeight: "bold", marginTop: 6 },
-  productDesc: { fontSize: 12, color: "#666" },
-  productPrice: { color: "#00CED1", fontWeight: "bold", marginTop: 4 },
-  productButtons: { flexDirection: "row", marginTop: 8, justifyContent: "space-between", gap: 8 },
-  cartButton: { backgroundColor: "#111", padding: 6, borderRadius: 6, flex: 1, alignItems: "center", justifyContent: "center" },
-  buyButton: { backgroundColor: "#00CED1", padding: 6, borderRadius: 6, flex: 1, alignItems: "center", justifyContent: "center" },
-  buttonText: { color: "white", fontSize: 10, fontWeight: "bold" },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  modalContainer: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "70%",
+  },
+  modalTitle: { fontWeight: "bold", fontSize: 16, marginBottom: 10 },
+  modalText: { fontSize: 14, marginBottom: 4 },
+  closeButton: {
+    marginTop: 16,
+    backgroundColor: "#00CED1",
+    padding: 12,
+    alignItems: "center",
+    borderRadius: 8,
+  },
 });

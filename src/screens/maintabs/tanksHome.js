@@ -11,7 +11,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 
 export default function TanksScreen() {
   const [searchText, setSearchText] = useState("");
-  const { token, logout } = useContext(AuthContext);
+  const { token, logout, activeTankId, activateTank } = useContext(AuthContext);
   const [tanksData, setTanksData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [noTanks, setNoTanks] = useState(false);
@@ -37,10 +37,11 @@ export default function TanksScreen() {
           });
 
           const result = await response.json();
+
           if (!isActive) return;
 
-          if (response.ok && result.data) {
-            const mappedData = result.data.map((tank, index) => ({
+          if (response.ok && result.data.tanks) {
+            const mappedData = result.data.tanks.map((tank, index) => ({
               id: tank.id,
               name: tank.name,
               dateAdded: tank.created_at?.split("T")[0] ?? "",
@@ -48,10 +49,12 @@ export default function TanksScreen() {
               waterType: tank.tank_type === "FRESH" ? "Freshwater" : "Saltwater",
               size: `${tank.size} ${tank.size_unit}`,
               image: localImages[index % localImages.length],
+              waterParams: tank?.latest_water_parameters || [],
             }));
+
             setTanksData(mappedData);
           } else {
-            console.error("Failed to fetch tanks:", result);
+            console.error("Failed to fetch tanks here:", result);
             if (result.status_code == 401) {
               logout(); // clear token from context + AsyncStorage
               navigation.reset({
@@ -126,8 +129,29 @@ export default function TanksScreen() {
             <Text style={{ ...styles.activateText, color: "#00CED1" }}>Update</Text>
             <AntDesign name="setting" size={24} color="#00CED1" />
           </TouchableOpacity>
-          <TouchableOpacity style={{ ...styles.activateButton, flex: 1, alignItems: "center" }}>
-            <Text style={styles.activateText}>ACTIVATE</Text>
+          <TouchableOpacity
+            style={{
+              ...styles.activateButton,
+              flex: 1,
+              alignItems: "center",
+              backgroundColor: item.id === activeTankId ? "#32CD32" : "#00CED1",
+            }}
+            onPress={async () => {
+              if (item.id === activeTankId) {
+                navigation.navigate("Dashboard"); // redirect
+              } else {
+                await activateTank(item.id);
+                Toast.show("Tank activated successfully!", {
+                  duration: Toast.durations.SHORT,
+                  position: Toast.positions.BOTTOM,
+                  backgroundColor: item.id === activeTankId ? "#32CD32" : "#1f1f1fff",
+
+                  textColor: "#fff",
+                });
+              }
+            }}
+          >
+            <Text style={styles.activateText}>{item.id === activeTankId ? "CHECK STATS" : "ACTIVATE"}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -161,6 +185,7 @@ export default function TanksScreen() {
 
   return (
     <View style={styles.container}>
+      {console.log(filteredTanks)}
       <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("AddTank")}>
         <FontAwesome6 name="add" size={24} color="black" />
       </TouchableOpacity>
