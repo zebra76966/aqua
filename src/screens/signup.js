@@ -54,10 +54,10 @@ const SignupScreen = ({ navigation }) => {
       {/* Welcome */}
       <Text style={styles.welcome}>Sign Up</Text>
 
-      <TextInput placeholder="Full Name" style={styles.input} value={name} onChangeText={setName} />
-      <TextInput placeholder="Username" style={styles.input} value={username} onChangeText={setUsername} />
-      <TextInput placeholder="Email" keyboardType="email-address" style={styles.input} value={email} onChangeText={setEmail} />
-      <TextInput placeholder="Password" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
+      <TextInput placeholder="Full Name" placeholderTextColor="#2cd4c8" style={styles.input} value={name} onChangeText={setName} />
+      <TextInput placeholder="Username" placeholderTextColor="#2cd4c8" style={styles.input} value={username} onChangeText={setUsername} />
+      <TextInput placeholder="Email" placeholderTextColor="#2cd4c8" keyboardType="email-address" style={styles.input} value={email} onChangeText={setEmail} />
+      <TextInput placeholder="Password" placeholderTextColor="#2cd4c8" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
 
       <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={isLoading}>
         {isLoading ? <ActivityIndicator color="#004d40" /> : <Text style={styles.buttonText}>Sign Up</Text>}
