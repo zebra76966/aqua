@@ -196,7 +196,7 @@ const TankSetupScreen = ({ navigation }) => {
         )}
       </TouchableOpacity>
 
-      <View style={styles.divider}>
+      {/* <View style={styles.divider}>
         <View style={styles.line} />
         <Text style={styles.orText}>or</Text>
         <View style={styles.line} />
@@ -205,7 +205,7 @@ const TankSetupScreen = ({ navigation }) => {
       <TouchableOpacity style={styles.continueButton} onPress={() => navigation.navigate("MainTabs")} disabled={loading}>
         <Text style={{ ...styles.continueText, backgroundColor: "#000" }}>ADD TANK LATER</Text>
         <Entypo name="chevron-right" size={22} color="#00CED1" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };
