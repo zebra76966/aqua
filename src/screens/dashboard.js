@@ -12,6 +12,7 @@ export default function DashboardScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
+  const [showWorkInProgress, setShowWorkInProgress] = useState(false);
 
   const animatedValue = useRef(new Animated.Value(0)).current;
   const [displayPercent, setDisplayPercent] = useState(0);
@@ -190,7 +191,14 @@ export default function DashboardScreen({ navigation }) {
       {/* Tank Header */}
       <View style={styles.tankHeader}>
         <Text style={styles.tankTitle}>{tank_name}</Text>
-        <TouchableOpacity>
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate("Tanks", {
+              screen: "TankDetail",
+              params: { tankId: activeTankId }, // 👈 send the active tank id
+            })
+          }
+        >
           <Feather name="settings" size={20} color="black" />
         </TouchableOpacity>
       </View>
@@ -292,7 +300,7 @@ export default function DashboardScreen({ navigation }) {
       </View>
 
       {/* Quick Add Log */}
-      <TouchableOpacity style={styles.quickAddLog}>
+      <TouchableOpacity style={styles.quickAddLog} onPress={() => setShowWorkInProgress(true)}>
         <Text style={styles.quickAddText}>QUICK ADD LOG</Text>
         <AntDesign name="pluscircle" size={20} color="white" style={{ marginLeft: 8 }} />
       </TouchableOpacity>
@@ -306,6 +314,21 @@ export default function DashboardScreen({ navigation }) {
               <Text style={{ color: "white", fontWeight: "bold" }}>CLOSE</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* Work in Progress Modal */}
+      <Modal visible={showWorkInProgress} transparent animationType="fade" onRequestClose={() => setShowWorkInProgress(false)}>
+        <View style={styles.wipOverlay}>
+          <Animated.View style={styles.wipContainer}>
+            <Feather name="tool" size={50} color="#00CED1" style={{ marginBottom: 16 }} />
+            <Text style={styles.wipTitle}>Feature Under Progress</Text>
+            <Text style={styles.wipText}>We’re working on this feature. It’ll be available soon 🚀</Text>
+
+            <TouchableOpacity onPress={() => setShowWorkInProgress(false)} style={styles.wipCloseBtn}>
+              <Text style={{ color: "white", fontWeight: "bold" }}>OKAY</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </Modal>
     </ScrollView>
@@ -368,5 +391,39 @@ const styles = StyleSheet.create({
     padding: 12,
     alignItems: "center",
     borderRadius: 8,
+  },
+  wipOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  wipContainer: {
+    width: "80%",
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  wipTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#00CED1",
+    marginBottom: 8,
+  },
+  wipText: {
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  wipCloseBtn: {
+    backgroundColor: "#00CED1",
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 25,
   },
 });

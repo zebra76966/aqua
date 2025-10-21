@@ -44,10 +44,10 @@ const TankSetupScreen = ({ navigation }) => {
           if (response.ok && result?.data?.tanks?.length > 0) {
             // ✅ Redirect if tanks already exist
             console.log("Tanks exist, redirecting to MainTabs", result);
-            // navigation.reset({
-            //   index: 0,
-            //   routes: [{ name: "MainTabs" }],
-            // });
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "MainTabs" }],
+            });
           }
         } catch (error) {
           console.error("Error fetching tanks:", error);
