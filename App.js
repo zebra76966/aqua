@@ -9,11 +9,12 @@ import TankScanScreen from "./src/screens/tankScanSreen";
 import TankSuccessScreen from "./src/screens/TankSuccessScreen";
 import PhScanScreen from "./src/screens/phScanSreen";
 import MainTabs from "./src/components/MainTabs";
-import UpdateTankScreen from "./src/screens/maintabs/forms/updateTankScreen";
+
 import { ThemeProvider } from "./src/themecontext";
 import { AuthProvider } from "./src/authcontext";
 import ImagePreview from "./src/screens/imageprevirew";
 import AddTank from "./src/screens/maintabs/forms/addTank";
+import TankAddWaterParams from "./src/screens/tankWaterParams";
 
 const Stack = createNativeStackNavigator();
 
@@ -29,6 +30,7 @@ export default function App() {
             <Stack.Screen name="tankSetup" component={TankSetupScreen} />
             <Stack.Screen name="TankScan" component={TankScanScreen} />
             <Stack.Screen name="PhScanScreen" component={PhScanScreen} />
+            <Stack.Screen name="TankAddWaterParams" component={TankAddWaterParams} />
             <Stack.Screen name="TankSuccess" component={TankSuccessScreen} />
             <Stack.Screen name="ImagePreview" component={ImagePreview} />
 

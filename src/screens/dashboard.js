@@ -6,18 +6,17 @@ import Svg, { Circle } from "react-native-svg";
 import { AuthContext } from "../authcontext";
 import { baseUrl } from "../config";
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }) {
   const { token, activeTankId } = useContext(AuthContext);
   const [tankData, setTankData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
 
-  // Animated values
   const animatedValue = useRef(new Animated.Value(0)).current;
   const [displayPercent, setDisplayPercent] = useState(0);
 
-  // ✅ Fetch Tank Data
+  // Fetch tank data
   const fetchTankData = useCallback(async () => {
     if (!activeTankId || !token) return;
     setLoading(true);
@@ -30,7 +29,6 @@ export default function DashboardScreen() {
           Authorization: `Bearer ${token}`,
         },
       });
-
       const json = await response.json();
       console.log("Active Tank Response:", json);
 
@@ -50,7 +48,7 @@ export default function DashboardScreen() {
 
   // Animate Circle
   const animateHealth = (value) => {
-    animatedValue.setValue(0); // reset before animating
+    animatedValue.setValue(0);
     Animated.timing(animatedValue, {
       toValue: value,
       duration: 1200,
@@ -59,34 +57,27 @@ export default function DashboardScreen() {
     }).start();
   };
 
-  // Update displayed percent text
   useEffect(() => {
-    const listener = animatedValue.addListener(({ value }) => {
-      setDisplayPercent(Math.round(value));
-    });
+    const listener = animatedValue.addListener(({ value }) => setDisplayPercent(Math.round(value)));
     return () => animatedValue.removeListener(listener);
   }, []);
 
-  // Fetch once when mounted
   useEffect(() => {
     fetchTankData();
   }, [fetchTankData]);
 
-  // Animate every time screen is focused
   useFocusEffect(
     useCallback(() => {
       fetchTankData();
     }, [fetchTankData])
   );
 
-  // Animate circle when tankData changes
   useEffect(() => {
-    if (tankData) {
+    if (tankData && tankData.overall_health != null) {
       animateHealth(tankData.overall_health);
     }
   }, [tankData]);
 
-  // Loading state
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
@@ -96,14 +87,18 @@ export default function DashboardScreen() {
     );
   }
 
-  // Error state
   if (errorMessage) {
     return (
       <View style={styles.loaderContainer}>
         <Feather name="alert-triangle" size={22} color="#ff4d4d" />
         <Text style={{ marginTop: 10, color: "#333", textAlign: "center", paddingHorizontal: 20 }}>{errorMessage}</Text>
-        <TouchableOpacity style={[styles.quickAddLog, { marginTop: 20 }]} onPress={fetchTankData}>
-          <Text style={styles.quickAddText}>REFRESH</Text>
+        <TouchableOpacity
+          style={[styles.quickAddLog, { marginTop: 20 }]}
+          onPress={() => navigation.navigate("Tanks")}
+
+          // fetchTankData
+        >
+          <Text style={styles.quickAddText}>GO TO TANKS</Text>
         </TouchableOpacity>
       </View>
     );
@@ -119,7 +114,6 @@ export default function DashboardScreen() {
 
   const { tank_name, overall_health, water_health_score, species_health_score, alerts, water_parameters, species_compatibility } = tankData;
 
-  // Circle Config
   const circleSize = 150;
   const strokeWidth = 10;
   const radius = (circleSize - strokeWidth) / 2;
@@ -132,17 +126,16 @@ export default function DashboardScreen() {
   };
 
   const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
   const animatedStroke = animatedValue.interpolate({
     inputRange: [0, 100],
     outputRange: [circumference, 0],
   });
 
-  // Modal content
   const renderModalContent = () => {
     if (!selectedSection) return null;
     switch (selectedSection) {
       case "water":
+        if (!water_parameters || Object.keys(water_parameters).length === 0) return <Text>No water parameters available.</Text>;
         return (
           <View>
             <Text style={styles.modalTitle}>Water Parameters</Text>
@@ -169,6 +162,7 @@ export default function DashboardScreen() {
           </View>
         );
       case "species":
+        if (!species_compatibility || species_compatibility.length === 0) return <Text>No species compatibility data available.</Text>;
         return (
           <View>
             <Text style={styles.modalTitle}>Species Compatibility</Text>
@@ -206,76 +200,95 @@ export default function DashboardScreen() {
         <View style={styles.circleWrapper}>
           <Svg width={circleSize} height={circleSize}>
             <Circle stroke="#fff" fill="transparent" cx={circleSize / 2} cy={circleSize / 2} r={radius} strokeWidth={strokeWidth} />
-            {/* Animated Health Circle */}
-            <AnimatedCircle
-              stroke={getHealthColor()}
-              fill="transparent"
-              cx={circleSize / 2}
-              cy={circleSize / 2}
-              r={radius}
-              strokeWidth={strokeWidth}
-              strokeDasharray={circumference}
-              strokeDashoffset={animatedStroke}
-              strokeLinecap="round"
-              rotation="-90"
-              origin={`${circleSize / 2}, ${circleSize / 2}`}
-            />
+            {overall_health != null && (
+              <AnimatedCircle
+                stroke={getHealthColor()}
+                fill="transparent"
+                cx={circleSize / 2}
+                cy={circleSize / 2}
+                r={radius}
+                strokeWidth={strokeWidth}
+                strokeDasharray={circumference}
+                strokeDashoffset={animatedStroke}
+                strokeLinecap="round"
+                rotation="-90"
+                origin={`${circleSize / 2}, ${circleSize / 2}`}
+              />
+            )}
           </Svg>
           <View style={styles.circleContent}>
-            <Text style={[styles.healthPercent, { color: getHealthColor() }]}>{overall_health}%</Text>
-            <Text style={styles.healthText}>{overall_health > 70 ? "Healthy" : overall_health > 40 ? "Moderate" : "Poor"}</Text>
+            <Text style={[styles.healthPercent, { color: getHealthColor() }]}>{overall_health != null ? `${overall_health}%` : "-"}</Text>
+            <Text style={styles.healthText}>{overall_health != null ? (overall_health > 70 ? "Healthy" : overall_health > 40 ? "Moderate" : "Poor") : "No Data"}</Text>
           </View>
         </View>
 
         <View style={styles.weekHealthTextBox}>
-          <Text style={styles.weekPercent}>{water_health_score}%</Text>
+          <Text style={styles.weekPercent}>{water_health_score ?? "-"}</Text>
           <Text style={styles.weekText}>Water Health</Text>
-          <Text style={[styles.weekPercent, { marginTop: 10 }]}>{species_health_score}%</Text>
+          <Text style={[styles.weekPercent, { marginTop: 10 }]}>{species_health_score ?? "-"}</Text>
           <Text style={styles.weekText}>Species Health</Text>
         </View>
       </View>
 
-      {/* Cards */}
+      {/* Water Parameters Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Feather name="droplet" size={18} color="#00CED1" />
           <Text style={styles.cardTitle}>Water Parameters</Text>
         </View>
-        <Text numberOfLines={2} ellipsizeMode="tail" style={styles.cardContent}>
-          {Object.entries(water_parameters)
-            .slice(0, 2)
-            .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
-            .join(", ")}
-        </Text>
-        <TouchableOpacity onPress={() => setSelectedSection("water")}>
-          <Text style={styles.viewMore}>View Details</Text>
-        </TouchableOpacity>
+        {water_parameters && Object.keys(water_parameters).length > 0 ? (
+          <>
+            <Text numberOfLines={2} ellipsizeMode="tail" style={styles.cardContent}>
+              {Object.entries(water_parameters)
+                .slice(0, 2)
+                .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
+                .join(", ")}
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedSection("water")}>
+              <Text style={styles.viewMore}>View Details</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity onPress={() => navigation.navigate("Tanks")} style={{ marginTop: 8 }}>
+            <Text style={[styles.viewMore, { color: "#FF5722" }]}>View Tanks</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
+      {/* Alerts Card */}
       <View style={[styles.card, { backgroundColor: "#fff5f5" }]}>
         <View style={styles.cardHeader}>
           <Feather name="alert-triangle" size={18} color="#ff4d4d" />
           <Text style={[styles.cardTitle, { color: "#ff4d4d" }]}>Alerts</Text>
         </View>
         <Text numberOfLines={2} style={{ color: "#ff4d4d" }}>
-          {alerts.length ? alerts.join(", ") : "No alerts! All good 🎉"}
+          {alerts && alerts.length ? alerts.join(", ") : "No alerts! All good 🎉"}
         </Text>
         <TouchableOpacity onPress={() => setSelectedSection("alerts")}>
           <Text style={styles.viewMore}>View Details</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Species Compatibility Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="fish-outline" size={18} color="#00CED1" />
           <Text style={styles.cardTitle}>Species Compatibility</Text>
         </View>
-        <Text numberOfLines={2} style={styles.cardContent}>
-          {species_compatibility.map((s) => s.species_name).join(", ")}
-        </Text>
-        <TouchableOpacity onPress={() => setSelectedSection("species")}>
-          <Text style={styles.viewMore}>View Details</Text>
-        </TouchableOpacity>
+        {species_compatibility && species_compatibility.length > 0 ? (
+          <>
+            <Text numberOfLines={2} style={styles.cardContent}>
+              {species_compatibility.map((s) => s.species_name).join(", ")}
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedSection("species")}>
+              <Text style={styles.viewMore}>View Details</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity onPress={() => navigation.navigate("Tanks")} style={{ marginTop: 8 }}>
+            <Text style={[styles.viewMore, { color: "#FF5722" }]}>View Tanks</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Quick Add Log */}

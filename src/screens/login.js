@@ -30,7 +30,7 @@ export default function LoginScreen({ navigation }) {
   // Redirect if token exists
   useEffect(() => {
     if (!loading && token) {
-      navigation.replace("MainTabs");
+      navigation.replace("tankSetup");
     }
   }, [loading, token, navigation]);
 

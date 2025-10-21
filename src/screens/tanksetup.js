@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useCallback } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Slider from "@react-native-community/slider";
@@ -7,16 +7,69 @@ import MaterialIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import Entypo from "react-native-vector-icons/Entypo";
 import { baseUrl } from "../config";
 import { AuthContext } from "../authcontext";
+import { useFocusEffect } from "@react-navigation/native";
 
 const TankSetupScreen = ({ navigation }) => {
   const [tankName, setTankName] = useState("");
   const [tankType, setTankType] = useState("");
   const [tankSize, setTankSize] = useState(35.6);
-  const [sizeUnit, setSizeUnit] = useState("G"); // Default Gallons
+  const [sizeUnit, setSizeUnit] = useState("L");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingTanks, setCheckingTanks] = useState(true);
 
-  const { token } = useContext(AuthContext);
+  const { token, logout } = useContext(AuthContext);
+
+  // ✅ Fetch Tanks on focus
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const fetchTanks = async () => {
+        if (!token) return;
+        try {
+          setCheckingTanks(true);
+          const response = await fetch(`${baseUrl}/tanks/get-tanks/`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          const result = await response.json();
+
+          if (!isActive) return;
+
+          if (response.ok && result?.data?.tanks?.length > 0) {
+            // ✅ Redirect if tanks already exist
+            console.log("Tanks exist, redirecting to MainTabs", result);
+            // navigation.reset({
+            //   index: 0,
+            //   routes: [{ name: "MainTabs" }],
+            // });
+          }
+        } catch (error) {
+          console.error("Error fetching tanks:", error);
+          if (error.status === 401) {
+            logout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Login" }],
+            });
+          }
+        } finally {
+          if (isActive) setCheckingTanks(false);
+        }
+      };
+
+      fetchTanks();
+
+      return () => {
+        isActive = false;
+      };
+    }, [token])
+  );
 
   const handleSubmit = async () => {
     if (!tankName || !tankType || !tankSize) {
@@ -43,10 +96,11 @@ const TankSetupScreen = ({ navigation }) => {
       });
 
       const data = await response.json();
+      console.log("Tank creation response:", data);
 
       if (response.ok) {
         navigation.navigate("TankScan", {
-          tankDataLocal: { name: tankName }, // send only tank name
+          tankDataLocal: { name: tankName, id: data?.data?.id },
         });
       } else {
         Alert.alert("Error", data?.detail || "Something went wrong.");
@@ -59,6 +113,17 @@ const TankSetupScreen = ({ navigation }) => {
     }
   };
 
+  // ✅ Show loader while checking for tanks
+  if (checkingTanks) {
+    return (
+      <View style={[styles.container, { justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color="#00CED1" />
+        <Text style={{ textAlign: "center", marginTop: 12 }}>Checking your tanks...</Text>
+      </View>
+    );
+  }
+
+  // ✅ If no tanks, show setup form
   return (
     <View style={styles.container}>
       <Text style={styles.title}>AQUA AI</Text>
@@ -79,7 +144,7 @@ const TankSetupScreen = ({ navigation }) => {
         </Picker>
       </View>
 
-      {/* Tank Size with Slider */}
+      {/* Tank Size Slider */}
       <View style={styles.sliderContainer}>
         <View style={styles.sliderLabel}>
           <MaterialIcons name="ruler" size={16} />
@@ -119,7 +184,7 @@ const TankSetupScreen = ({ navigation }) => {
         <TextInput style={styles.input} placeholder="Notes (optional)" placeholderTextColor="#999" value={notes} onChangeText={setNotes} />
       </View>
 
-      {/* Continue Button or Loader */}
+      {/* Continue */}
       <TouchableOpacity style={{ ...styles.continueButton, backgroundColor: "#00CED1" }} onPress={handleSubmit} disabled={loading}>
         {loading ? (
           <ActivityIndicator size="small" color="#000" />
@@ -170,28 +235,16 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     backgroundColor: "#fff",
   },
-  icon: {
-    marginRight: 10,
-  },
+  icon: { marginRight: 10 },
   input: {
     flex: 1,
     height: 48,
     fontSize: 16,
     color: "#000",
   },
-  picker: {
-    flex: 1,
-    height: 50,
-    color: "#000",
-  },
-  sliderContainer: {
-    marginBottom: 24,
-  },
-  sliderLabel: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
+  picker: { flex: 1, height: 50, color: "#000" },
+  sliderContainer: { marginBottom: 24 },
+  sliderLabel: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   sizeBox: {
     position: "absolute",
     right: 0,
@@ -202,11 +255,7 @@ const styles = StyleSheet.create({
     borderColor: "#999",
     padding: 6,
   },
-  sliderValue: {
-    textAlign: "center",
-    color: "#00CED1",
-    fontWeight: "bold",
-  },
+  sliderValue: { textAlign: "center", color: "#00CED1", fontWeight: "bold" },
   toggleContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -219,17 +268,9 @@ const styles = StyleSheet.create({
     borderColor: "#00CED1",
     alignItems: "center",
   },
-  toggleActive: {
-    backgroundColor: "#00CED1",
-  },
-  toggleText: {
-    color: "#00CED1",
-    fontWeight: "bold",
-  },
-  toggleTextActive: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
+  toggleActive: { backgroundColor: "#00CED1" },
+  toggleText: { color: "#00CED1", fontWeight: "bold" },
+  toggleTextActive: { color: "#fff", fontWeight: "bold" },
   continueButton: {
     flexDirection: "row",
     backgroundColor: "#111",
@@ -244,20 +285,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginRight: 10,
   },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#ccc",
-  },
-  orText: {
-    marginHorizontal: 10,
-    color: "#999",
-  },
+  divider: { flexDirection: "row", alignItems: "center", marginVertical: 20 },
+  line: { flex: 1, height: 1, backgroundColor: "#ccc" },
+  orText: { marginHorizontal: 10, color: "#999" },
 });
 
 export default TankSetupScreen;

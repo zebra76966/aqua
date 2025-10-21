@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Modal, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Modal, ScrollView, Animated } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import MaterialIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { AuthContext } from "../authcontext";
 import { baseUrl } from "../config";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import * as ImageManipulator from "expo-image-manipulator";
 
 const PhScanScreen = () => {
@@ -173,23 +174,49 @@ const PhScanScreen = () => {
     ],
   };
 
+  const LoadingScreen = () => {
+    const [dots, setDots] = useState(".");
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setDots((prev) => (prev.length >= 3 ? "." : prev + "."));
+      }, 500);
+      return () => clearInterval(interval);
+    }, []);
+
+    const scale = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+      Animated.loop(
+        Animated.sequence([Animated.timing(scale, { toValue: 1.2, duration: 600, useNativeDriver: true }), Animated.timing(scale, { toValue: 1, duration: 600, useNativeDriver: true })])
+      ).start();
+    }, []);
+
+    return (
+      <View style={styles.loadingContainer}>
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Icon name="fish" size={60} color="#2cd4c8" />
+        </Animated.View>
+        <Text style={styles.loadingText}>Analyzing {dots}</Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-        <View style={styles.overlay}>
-          {loading ? (
-            <ActivityIndicator size="large" color="#fff" />
-          ) : (
-            <>
-              <TouchableOpacity style={styles.button} onPress={handleScan}>
-                <Text style={styles.buttonText}>Scan pH test strip</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.flipButton} onPress={flipCamera}>
-                <Text style={styles.flipText}>Flip</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+        {loading ? (
+          <LoadingScreen />
+        ) : (
+          <View style={styles.overlay}>
+            <TouchableOpacity style={styles.button} onPress={handleScan}>
+              <Text style={styles.buttonText}>Scan pH test strip</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.flipButton} onPress={flipCamera}>
+              <Text style={styles.flipText}>Flip</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </CameraView>
 
       {/* Result Modal */}
@@ -441,4 +468,24 @@ const styles = StyleSheet.create({
   },
 
   actionText: { color: "#fff", fontWeight: "bold" },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  loadingText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 15,
+  },
+  iconPulse: {
+    transform: [{ scale: 1 }],
+  },
 });

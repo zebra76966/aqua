@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { useRoute } from "@react-navigation/native";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput, Image, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput, Image, Alert, Animated } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../authcontext";
@@ -10,6 +10,7 @@ import RBSheet from "react-native-raw-bottom-sheet";
 import * as ImageManipulator from "expo-image-manipulator";
 
 const TankScanScreen = () => {
+  const { token, logout, activeTankId, activateTank } = useContext(AuthContext);
   const route = useRoute();
   const { tankDataLocal } = route.params;
   const [facing, setFacing] = useState("back");
@@ -22,7 +23,6 @@ const TankScanScreen = () => {
   const sheetRef = useRef(null);
 
   const navigation = useNavigation();
-  const { token } = useContext(AuthContext);
 
   useEffect(() => {
     if (!permission) requestPermission();
@@ -34,21 +34,20 @@ const TankScanScreen = () => {
       setScanned(true);
       if (!cameraRef.current) throw new Error("Camera not ready");
 
+      // Capture full-quality image
       let photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5,
-        skipProcessing: true,
+        quality: 1,
+        skipProcessing: false,
       });
 
-      const manipulated = await ImageManipulator.manipulateAsync(photo.uri, [{ resize: { width: 1024 } }], { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG });
-
-      uploadImage(manipulated.uri);
+      uploadImage(photo.uri);
     } catch (error) {
       alert(error.message || "Failed to capture image.");
       setScanned(false);
     }
   };
 
-  // --- UPLOAD TO AI ---
+  // --- UPLOAD TO AI (NEW MULTIMODEL ENDPOINT) ---
   const uploadImage = async (uri) => {
     setIsUploading(true);
     try {
@@ -59,32 +58,33 @@ const TankScanScreen = () => {
         type: "application/octet-stream",
       });
 
-      const response = await fetch(`${baseUrl}/ai-model/inference/`, {
+      const response = await fetch(`${baseUrl}/ai-model/inference/multimodel/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
       const result = await response.json();
+      console.log(result);
       if (!response.ok) throw new Error(result.detail || "Upload failed");
 
-      const arrayData = Array.isArray(result) ? result : [result];
-
-      const mappedData = arrayData.map((item) => {
-        const predictions = item?.data?.predictions || {};
-        return {
-          class_name: predictions.class_name || "Unknown",
-          confidence: predictions.confidence || 0,
-          metadata: {
-            species_name: predictions.metadata?.species_name || "",
-            species_Nomenclature: predictions.metadata?.species_Nomenclature || "",
-            max_size_cm: predictions.metadata?.max_size_cm || "",
-          },
-          image_url: item?.data?.image_url || null,
-          quantity: "1", // default quantity
-          notes: "",
-        };
-      });
+      // --- NEW STRUCTURE ---
+      const predictions = result?.data?.predictions || [];
+      const mappedData = predictions.map((pred) => ({
+        class_name: pred.class_name || "Unknown",
+        confidence: pred.confidence || 0,
+        metadata: {
+          species_name: pred.metadata?.species_name || pred.species?.name || "Unknown Species",
+          species_Nomenclature: pred.metadata?.species_Nomenclature || pred.species?.scientific_name || "",
+          max_size_cm: pred.metadata?.max_size_cm || pred.metadata?.maximum_size || "",
+          summary: pred.metadata?.summary || "",
+          distribution: pred.metadata?.distribution || "",
+          category: pred.species?.category || "",
+        },
+        image_url: pred.metadata?.image_url || result?.data?.image_url || null,
+        quantity: "1",
+        notes: "",
+      }));
 
       setScanData(mappedData);
       sheetRef.current.open();
@@ -109,8 +109,8 @@ const TankScanScreen = () => {
           notes: fish.notes,
           last_scan_image_url: fish.image_url,
         };
+        console.log("Submitting species:", payload);
 
-        console.log(fish);
         const res = await fetch(`${baseUrl}/tanks/${tankDataLocal.id}/add-species/`, {
           method: "POST",
           headers: {
@@ -120,20 +120,18 @@ const TankScanScreen = () => {
           body: JSON.stringify(payload),
         });
 
-        console.log(payload);
-
         if (!res.ok) {
-          const errorText = await res.text(); // safer
-          console.log("Error response:", errorText);
+          const errorText = await res.text();
           throw new Error("Failed to add species: " + errorText);
         }
       }
 
       Alert.alert("Success", "Species added successfully!");
       sheetRef.current.close();
-      navigation.navigate("TankDetail", {
-        tankId: tankDataLocal.id,
-        tankData: tankDataLocal,
+
+      await activateTank(tankDataLocal.id);
+      navigation.navigate("TankAddWaterParams", {
+        origin: "TankScan",
       });
     } catch (error) {
       Alert.alert("Error", error.message);
@@ -141,36 +139,47 @@ const TankScanScreen = () => {
     }
   };
 
-  // --- RENDER FISH FORM ---
-  const renderFishCard = (fish, index) => {
-    return (
-      <View key={index} style={styles.card}>
-        {fish.image_url && (
-          <View style={{ alignItems: "center", marginBottom: 10 }}>
-            <Image source={{ uri: fish.image_url }} style={styles.fishImage} resizeMode="cover" />
-          </View>
-        )}
-
-        <Text style={styles.label}>Species Name</Text>
-        <TextInput style={styles.input} value={fish.metadata.species_name} onChangeText={(t) => updateField(index, "metadata.species_name", t)} />
-
-        <Text style={styles.label}>Scientific Name</Text>
-        <TextInput style={styles.input} value={fish.metadata.species_Nomenclature} onChangeText={(t) => updateField(index, "metadata.species_Nomenclature", t)} />
-
-        <Text style={styles.label}>Quantity</Text>
-        <TextInput style={styles.input} keyboardType="numeric" value={fish.quantity} onChangeText={(t) => updateField(index, "quantity", t)} />
-
-        <Text style={styles.label}>Notes</Text>
-        <TextInput style={styles.input} value={fish.notes} onChangeText={(t) => updateField(index, "notes", t)} />
-
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={() => handleRemove(index)}>
-            <Icon name="delete" size={25} color="red" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+  // --- HELPER: CONFIDENCE COLORS ---
+  const getConfidenceColor = (value) => {
+    if (value > 0.85) return "rgba(46,204,113,0.9)";
+    if (value > 0.6) return "rgba(241,196,15,0.9)";
+    return "rgba(231,76,60,0.9)";
   };
+
+  // --- RENDER FISH FORM ---
+  const renderFishCard = (fish, index) => (
+    <View key={index} style={styles.card}>
+      {fish.image_url && (
+        <View style={styles.imageContainer}>
+          <Image source={{ uri: fish.image_url }} style={styles.fishImage} resizeMode="cover" />
+
+          {/* Confidence Badge */}
+          <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(fish.confidence) }]}>
+            <Icon name="shield-check" size={16} color="#fff" style={{ marginRight: 4 }} />
+            <Text style={styles.confidenceText}>{(fish.confidence * 100).toFixed(1)}%</Text>
+          </View>
+        </View>
+      )}
+
+      <Text style={styles.label}>Species Name</Text>
+      <TextInput style={styles.input} value={fish.metadata.species_name} onChangeText={(t) => updateField(index, "metadata.species_name", t)} />
+
+      <Text style={styles.label}>Scientific Name</Text>
+      <TextInput style={styles.input} value={fish.metadata.species_Nomenclature} onChangeText={(t) => updateField(index, "metadata.species_Nomenclature", t)} />
+
+      <Text style={styles.label}>Quantity</Text>
+      <TextInput style={styles.input} keyboardType="numeric" value={fish.quantity} onChangeText={(t) => updateField(index, "quantity", t)} />
+
+      <Text style={styles.label}>Notes</Text>
+      <TextInput style={styles.input} value={fish.notes} onChangeText={(t) => updateField(index, "notes", t)} />
+
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.iconButton} onPress={() => handleRemove(index)}>
+          <Icon name="delete" size={25} color="red" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   const updateField = (index, field, value) => {
     const updated = [...scanData];
@@ -189,6 +198,7 @@ const TankScanScreen = () => {
   };
 
   // --- CAMERA PERMISSION ---
+
   if (!permission) return <View />;
   if (!permission.granted) {
     return (
@@ -201,24 +211,50 @@ const TankScanScreen = () => {
     );
   }
 
+  const LoadingScreen = () => {
+    const [dots, setDots] = useState(".");
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setDots((prev) => (prev.length >= 3 ? "." : prev + "."));
+      }, 500);
+      return () => clearInterval(interval);
+    }, []);
+
+    const scale = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+      Animated.loop(
+        Animated.sequence([Animated.timing(scale, { toValue: 1.2, duration: 600, useNativeDriver: true }), Animated.timing(scale, { toValue: 1, duration: 600, useNativeDriver: true })])
+      ).start();
+    }, []);
+
+    return (
+      <View style={styles.loadingContainer}>
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Icon name="fish" size={60} color="#2cd4c8" />
+        </Animated.View>
+        <Text style={styles.loadingText}>Analyzing {dots}</Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
 
-      <View style={styles.overlay}>
-        {scanned || isUploading ? (
-          <ActivityIndicator size="large" color="#fff" />
-        ) : (
-          <>
-            <TouchableOpacity style={styles.button} onPress={handleScan}>
-              <Text style={styles.buttonText}>Scan Tank</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.flipButton} onPress={() => setFacing((prev) => (prev === "back" ? "front" : "back"))}>
-              <Text style={styles.flipText}>Flip</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
+      {scanned || isUploading ? (
+        <LoadingScreen />
+      ) : (
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.button} onPress={handleScan}>
+            <Text style={styles.buttonText}>Scan Tank</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.flipButton} onPress={() => setFacing((prev) => (prev === "back" ? "front" : "back"))}>
+            <Text style={styles.flipText}>Flip</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Bottom Sheet */}
       <RBSheet
@@ -290,6 +326,26 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 8,
   },
+  imageContainer: {
+    alignItems: "center",
+    marginBottom: 10,
+    position: "relative",
+  },
+  confidenceBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  confidenceText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 12,
+  },
   label: {
     fontWeight: "bold",
     marginTop: 6,
@@ -313,5 +369,25 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     paddingHorizontal: 10,
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  loadingText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 15,
+  },
+  iconPulse: {
+    transform: [{ scale: 1 }],
   },
 });
