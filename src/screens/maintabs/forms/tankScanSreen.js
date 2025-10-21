@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { useRoute } from "@react-navigation/native";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput, Image, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput, Image, Alert, Animated } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../../../authcontext";
@@ -282,24 +282,50 @@ const TankScanScreenTabs = () => {
     );
   }
 
+  const LoadingScreen = () => {
+    const [dots, setDots] = useState(".");
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setDots((prev) => (prev.length >= 3 ? "." : prev + "."));
+      }, 500);
+      return () => clearInterval(interval);
+    }, []);
+
+    const scale = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+      Animated.loop(
+        Animated.sequence([Animated.timing(scale, { toValue: 1.2, duration: 600, useNativeDriver: true }), Animated.timing(scale, { toValue: 1, duration: 600, useNativeDriver: true })])
+      ).start();
+    }, []);
+
+    return (
+      <View style={styles.loadingContainer}>
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Icon name="fish" size={60} color="#2cd4c8" />
+        </Animated.View>
+        <Text style={styles.loadingText}>Analyzing {dots}</Text>
+      </View>
+    );
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={{ ...styles.container }}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
 
-      <View style={styles.overlay}>
-        {scanned || isUploading ? (
-          <ActivityIndicator size="large" color="#fff" />
-        ) : (
-          <>
-            <TouchableOpacity style={styles.button} onPress={handleScan}>
-              <Text style={styles.buttonText}>Scan Tank</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.flipButton} onPress={() => setFacing((prev) => (prev === "back" ? "front" : "back"))}>
-              <Text style={styles.flipText}>Flip</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
+      {scanned || isUploading ? (
+        <LoadingScreen />
+      ) : (
+        <View style={{ ...styles.overlay, paddingBottom: 50 }}>
+          <TouchableOpacity style={styles.button} onPress={handleScan}>
+            <Text style={styles.buttonText}>Scan Tank</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.flipButton} onPress={() => setFacing((prev) => (prev === "back" ? "front" : "back"))}>
+            <Text style={styles.flipText}>Flip</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Bottom Sheet */}
       <RBSheet
@@ -418,5 +444,25 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     paddingHorizontal: 10,
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  loadingText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 15,
+  },
+  iconPulse: {
+    transform: [{ scale: 1 }],
   },
 });

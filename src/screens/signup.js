@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
-import { baseUrl } from "../config"; // example: http://127.0.0.1:8000/api/v1
-// Ensure baseUrl ends WITHOUT trailing slash
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, Platform } from "react-native";
+import { baseUrl } from "../config";
 
 const SignupScreen = ({ navigation }) => {
   const [username, setUsername] = useState("");
@@ -47,28 +46,32 @@ const SignupScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Logo */}
-      <Text style={styles.logo}>aqua</Text>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "#ffffff" }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          {/* Logo */}
+          <Text style={styles.logo}>aqua</Text>
 
-      {/* Welcome */}
-      <Text style={styles.welcome}>Sign Up</Text>
+          {/* Welcome */}
+          <Text style={styles.welcome}>Sign Up</Text>
 
-      <TextInput placeholder="Full Name" placeholderTextColor="#2cd4c8" style={styles.input} value={name} onChangeText={setName} />
-      <TextInput placeholder="Username" placeholderTextColor="#2cd4c8" style={styles.input} value={username} onChangeText={setUsername} />
-      <TextInput placeholder="Email" placeholderTextColor="#2cd4c8" keyboardType="email-address" style={styles.input} value={email} onChangeText={setEmail} />
-      <TextInput placeholder="Password" placeholderTextColor="#2cd4c8" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
+          <TextInput placeholder="Full Name" placeholderTextColor="#2cd4c8" style={styles.input} value={name} onChangeText={setName} />
+          <TextInput placeholder="Username" placeholderTextColor="#2cd4c8" style={styles.input} value={username} onChangeText={setUsername} />
+          <TextInput placeholder="Email" placeholderTextColor="#2cd4c8" keyboardType="email-address" style={styles.input} value={email} onChangeText={setEmail} />
+          <TextInput placeholder="Password" placeholderTextColor="#2cd4c8" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
 
-      <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator color="#004d40" /> : <Text style={styles.buttonText}>Sign Up</Text>}
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={isLoading}>
+            {isLoading ? <ActivityIndicator color="#004d40" /> : <Text style={styles.buttonText}>Sign Up</Text>}
+          </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-        <Text style={styles.switchText}>
-          Already have an account? <Text style={styles.link}>Log in</Text>
-        </Text>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <Text style={styles.switchText}>
+              Already have an account? <Text style={styles.link}>Log in</Text>
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -76,10 +79,11 @@ export default SignupScreen;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: "#ffffff",
     paddingHorizontal: 20,
     justifyContent: "center",
+    paddingVertical: 40, // extra space for smaller screens
   },
   logo: {
     fontSize: 40,

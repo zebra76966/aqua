@@ -7,7 +7,8 @@ import { AuthContext } from "../authcontext";
 import { baseUrl } from "../config";
 
 export default function DashboardScreen({ navigation }) {
-  const { token, activeTankId } = useContext(AuthContext);
+  const { token, activeTankId, logout } = useContext(AuthContext);
+
   const [tankData, setTankData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -18,8 +19,21 @@ export default function DashboardScreen({ navigation }) {
   const [displayPercent, setDisplayPercent] = useState(0);
 
   // Fetch tank data
+  // Fetch tank data
   const fetchTankData = useCallback(async () => {
-    if (!activeTankId || !token) return;
+    // 🧠 Handle no tank case first
+    if (!token) {
+      setErrorMessage("You are not logged in. Please log in again.");
+      setLoading(false);
+      return;
+    }
+
+    if (!activeTankId) {
+      setErrorMessage("No active tank found. Please select or create one.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
     try {
@@ -30,6 +44,23 @@ export default function DashboardScreen({ navigation }) {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        console.warn("Unauthorized: Logging out user.");
+        setErrorMessage("Session expired. Redirecting to login...");
+        setTankData(null);
+        setLoading(false);
+
+        setTimeout(() => {
+          logout(); // clears token & context
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }], // your login screen name here
+          });
+        }, 1000);
+        return;
+      }
+
       const json = await response.json();
       console.log("Active Tank Response:", json);
 
@@ -93,12 +124,9 @@ export default function DashboardScreen({ navigation }) {
       <View style={styles.loaderContainer}>
         <Feather name="alert-triangle" size={22} color="#ff4d4d" />
         <Text style={{ marginTop: 10, color: "#333", textAlign: "center", paddingHorizontal: 20 }}>{errorMessage}</Text>
-        <TouchableOpacity
-          style={[styles.quickAddLog, { marginTop: 20 }]}
-          onPress={() => navigation.navigate("Tanks")}
 
-          // fetchTankData
-        >
+        {/* If no tank or unauthorized, show CTA */}
+        <TouchableOpacity style={[styles.quickAddLog, { marginTop: 20 }]} onPress={() => navigation.navigate("Tanks")}>
           <Text style={styles.quickAddText}>GO TO TANKS</Text>
         </TouchableOpacity>
       </View>

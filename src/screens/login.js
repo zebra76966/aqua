@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Platform } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Platform, KeyboardAvoidingView, ScrollView, Keyboard, TouchableWithoutFeedback } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
@@ -140,49 +140,53 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={styles.logo}>aqua</Text>
-      <Text style={styles.welcome}>Welcome Back!</Text>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView contentContainerStyle={[styles.container, { justifyContent: "center", flexGrow: 1 }]} keyboardShouldPersistTaps="handled">
+          <Text style={styles.logo}>aqua</Text>
+          <Text style={styles.welcome}>Welcome Back!</Text>
 
-      <TextInput style={styles.input} placeholder="Username" placeholderTextColor="#2cd4c8" value={username} onChangeText={setUsername} autoCapitalize="none" />
+          <TextInput style={styles.input} placeholder="Username" placeholderTextColor="#2cd4c8" value={username} onChangeText={setUsername} autoCapitalize="none" />
 
-      <View style={styles.passwordContainer}>
-        <TextInput style={styles.passwordInput} placeholder="Password" placeholderTextColor="#2cd4c8" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-          <Ionicons name={showPassword ? "eye" : "eye-off"} size={22} color="#2cd4c8" />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.passwordContainer}>
+            <TextInput style={styles.passwordInput} placeholder="Password" placeholderTextColor="#2cd4c8" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              <Ionicons name={showPassword ? "eye" : "eye-off"} size={22} color="#2cd4c8" />
+            </TouchableOpacity>
+          </View>
 
-      <View style={styles.divider}>
-        <View style={styles.line} />
-        <Text style={styles.orText}>or</Text>
-        <View style={styles.line} />
-      </View>
+          <View style={styles.divider}>
+            <View style={styles.line} />
+            <Text style={styles.orText}>or</Text>
+            <View style={styles.line} />
+          </View>
 
-      <View style={styles.socialIcons}>
-        <TouchableOpacity onPress={handleGooglePress} disabled={!request || isLoading}>
-          <FontAwesome name="google" size={30} color="#2cd4c8" />
-        </TouchableOpacity>
-        <FontAwesome name="apple" size={30} color="#2cd4c8" />
-        <FontAwesome name="linkedin" size={30} color="#2cd4c8" />
-      </View>
+          <View style={styles.socialIcons}>
+            <TouchableOpacity onPress={handleGooglePress} disabled={!request || isLoading}>
+              <FontAwesome name="google" size={30} color="#2cd4c8" />
+            </TouchableOpacity>
+            <FontAwesome name="apple" size={30} color="#2cd4c8" />
+            <FontAwesome name="linkedin" size={30} color="#2cd4c8" />
+          </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
-        {isLoading ? (
-          <ActivityIndicator size="small" color="#004d40" />
-        ) : (
-          <>
-            <Text style={styles.buttonText}>CONTINUE</Text>
-            <Ionicons name="arrow-forward" size={20} color="#004d40" />
-          </>
-        )}
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#004d40" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>CONTINUE</Text>
+                <Ionicons name="arrow-forward" size={20} color="#004d40" />
+              </>
+            )}
+          </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("Signup")}>
-        <Text style={styles.switchText}>
-          Don't have an account? <Text style={styles.link}>Sign up</Text>
-        </Text>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity onPress={() => navigation.navigate("Signup")}>
+            <Text style={styles.switchText}>
+              Don't have an account? <Text style={styles.link}>Sign up</Text>
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }

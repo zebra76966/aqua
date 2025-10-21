@@ -1,5 +1,5 @@
-import React, { useState, useContext, useCallback } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import React, { useState, useContext, useCallback, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, ScrollView, Keyboard, TouchableWithoutFeedback } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Slider from "@react-native-community/slider";
 import Icon from "react-native-vector-icons/FontAwesome5";
@@ -20,6 +20,16 @@ const TankSetupScreen = ({ navigation }) => {
 
   const { token, logout } = useContext(AuthContext);
 
+  // ✅ Helper function to handle unauthorized responses
+  const handleUnauthorized = () => {
+    Alert.alert("Session Expired", "Please log in again to continue.");
+    logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Login" }],
+    });
+  };
+
   // ✅ Fetch Tanks on focus
   useFocusEffect(
     useCallback(() => {
@@ -37,12 +47,16 @@ const TankSetupScreen = ({ navigation }) => {
             },
           });
 
-          const result = await response.json();
+          // ✅ Check for token expiry
+          if (response.status === 401) {
+            if (isActive) handleUnauthorized();
+            return;
+          }
 
+          const result = await response.json();
           if (!isActive) return;
 
           if (response.ok && result?.data?.tanks?.length > 0) {
-            // ✅ Redirect if tanks already exist
             console.log("Tanks exist, redirecting to MainTabs", result);
             navigation.reset({
               index: 0,
@@ -51,13 +65,6 @@ const TankSetupScreen = ({ navigation }) => {
           }
         } catch (error) {
           console.error("Error fetching tanks:", error);
-          if (error.status === 401) {
-            logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Login" }],
-            });
-          }
         } finally {
           if (isActive) setCheckingTanks(false);
         }
@@ -95,6 +102,12 @@ const TankSetupScreen = ({ navigation }) => {
         }),
       });
 
+      // ✅ Handle expired/invalid token
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
       const data = await response.json();
       console.log("Tank creation response:", data);
 
@@ -125,88 +138,81 @@ const TankSetupScreen = ({ navigation }) => {
 
   // ✅ If no tanks, show setup form
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>AQUA AI</Text>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "#ffffff" }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>AQUA AI</Text>
 
-      {/* Tank Name */}
-      <View style={styles.inputContainer}>
-        <Icon name="hashtag" size={16} color="#333" style={styles.icon} />
-        <TextInput style={styles.input} placeholder="Tank Name" placeholderTextColor="#999" value={tankName} onChangeText={setTankName} />
-      </View>
+          {/* Tank Name */}
+          <View style={styles.inputContainer}>
+            <Icon name="hashtag" size={16} color="#333" style={styles.icon} />
+            <TextInput style={styles.input} placeholder="Tank Name" placeholderTextColor="#999" value={tankName} onChangeText={setTankName} />
+          </View>
 
-      {/* Tank Type Dropdown */}
-      <View style={styles.inputContainer}>
-        <MaterialIcons name="fish" size={18} color="#333" style={styles.icon} />
-        <Picker selectedValue={tankType} style={styles.picker} onValueChange={(itemValue) => setTankType(itemValue)}>
-          <Picker.Item label="Tank Type" value="" />
-          <Picker.Item label="Freshwater" value="Freshwater" />
-          <Picker.Item label="Saltwater" value="Saltwater" />
-        </Picker>
-      </View>
+          {/* Tank Type Dropdown */}
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="fish" size={18} color="#333" style={styles.icon} />
+            <Picker selectedValue={tankType} style={styles.picker} onValueChange={(itemValue) => setTankType(itemValue)}>
+              <Picker.Item label="Tank Type" value="" />
+              <Picker.Item label="Freshwater" value="Freshwater" />
+              <Picker.Item label="Saltwater" value="Saltwater" />
+            </Picker>
+          </View>
 
-      {/* Tank Size Slider */}
-      <View style={styles.sliderContainer}>
-        <View style={styles.sliderLabel}>
-          <MaterialIcons name="ruler" size={16} />
-          <Text style={{ marginLeft: 6 }}>Tank Size ({sizeUnit})</Text>
-        </View>
+          {/* Tank Size Slider */}
+          <View style={styles.sliderContainer}>
+            <View style={styles.sliderLabel}>
+              <MaterialIcons name="ruler" size={16} />
+              <Text style={{ marginLeft: 6 }}>Tank Size ({sizeUnit})</Text>
+            </View>
 
-        <View style={styles.sizeBox}>
-          <Text>{tankSize.toFixed(1)}</Text>
-        </View>
+            <View style={styles.sizeBox}>
+              <Text>{tankSize.toFixed(1)}</Text>
+            </View>
 
-        <Slider
-          style={{ width: "100%", height: 40 }}
-          minimumValue={0}
-          maximumValue={200}
-          value={tankSize}
-          onValueChange={setTankSize}
-          minimumTrackTintColor="#00CED1"
-          maximumTrackTintColor="#000000"
-          thumbTintColor="#00CED1"
-        />
-        <Text style={styles.sliderValue}>{tankSize.toFixed(1)}</Text>
-      </View>
+            <Slider
+              style={{ width: "100%", height: 40 }}
+              minimumValue={0}
+              maximumValue={200}
+              value={tankSize}
+              onValueChange={setTankSize}
+              minimumTrackTintColor="#00CED1"
+              maximumTrackTintColor="#000000"
+              thumbTintColor="#00CED1"
+            />
+            <Text style={styles.sliderValue}>{tankSize.toFixed(1)}</Text>
+          </View>
 
-      {/* Toggle Gallons / Litres */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity style={[styles.toggleButton, sizeUnit === "G" && styles.toggleActive]} onPress={() => setSizeUnit("G")}>
-          <Text style={sizeUnit === "G" ? styles.toggleTextActive : styles.toggleText}>Gallons</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.toggleButton, sizeUnit === "L" && styles.toggleActive]} onPress={() => setSizeUnit("L")}>
-          <Text style={sizeUnit === "L" ? styles.toggleTextActive : styles.toggleText}>Litres</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Toggle Gallons / Litres */}
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity style={[styles.toggleButton, sizeUnit === "G" && styles.toggleActive]} onPress={() => setSizeUnit("G")}>
+              <Text style={sizeUnit === "G" ? styles.toggleTextActive : styles.toggleText}>Gallons</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.toggleButton, sizeUnit === "L" && styles.toggleActive]} onPress={() => setSizeUnit("L")}>
+              <Text style={sizeUnit === "L" ? styles.toggleTextActive : styles.toggleText}>Litres</Text>
+            </TouchableOpacity>
+          </View>
 
-      {/* Notes */}
-      <View style={styles.inputContainer}>
-        <Entypo name="text" size={18} color="#333" style={styles.icon} />
-        <TextInput style={styles.input} placeholder="Notes (optional)" placeholderTextColor="#999" value={notes} onChangeText={setNotes} />
-      </View>
+          {/* Notes */}
+          <View style={styles.inputContainer}>
+            <Entypo name="text" size={18} color="#333" style={styles.icon} />
+            <TextInput style={styles.input} placeholder="Notes (optional)" placeholderTextColor="#999" value={notes} onChangeText={setNotes} />
+          </View>
 
-      {/* Continue */}
-      <TouchableOpacity style={{ ...styles.continueButton, backgroundColor: "#00CED1" }} onPress={handleSubmit} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator size="small" color="#000" />
-        ) : (
-          <>
-            <Text style={{ ...styles.continueText, color: "#000" }}>CONTINUE</Text>
-            <Entypo name="chevron-right" size={22} color="#000" />
-          </>
-        )}
-      </TouchableOpacity>
-
-      {/* <View style={styles.divider}>
-        <View style={styles.line} />
-        <Text style={styles.orText}>or</Text>
-        <View style={styles.line} />
-      </View>
-
-      <TouchableOpacity style={styles.continueButton} onPress={() => navigation.navigate("MainTabs")} disabled={loading}>
-        <Text style={{ ...styles.continueText, backgroundColor: "#000" }}>ADD TANK LATER</Text>
-        <Entypo name="chevron-right" size={22} color="#00CED1" />
-      </TouchableOpacity> */}
-    </View>
+          {/* Continue */}
+          <TouchableOpacity style={{ ...styles.continueButton, backgroundColor: "#00CED1" }} onPress={handleSubmit} disabled={loading}>
+            {loading ? (
+              <ActivityIndicator size="small" color="#000" />
+            ) : (
+              <>
+                <Text style={{ ...styles.continueText, color: "#000" }}>CONTINUE</Text>
+                <Entypo name="chevron-right" size={22} color="#000" />
+              </>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -285,9 +291,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginRight: 10,
   },
-  divider: { flexDirection: "row", alignItems: "center", marginVertical: 20 },
-  line: { flex: 1, height: 1, backgroundColor: "#ccc" },
-  orText: { marginHorizontal: 10, color: "#999" },
 });
 
 export default TankSetupScreen;
