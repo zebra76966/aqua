@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image } from "react-native";
-
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image, Animated } from "react-native";
+import { Feather } from "@expo/vector-icons";
 const dummyProducts = [
   { id: "1", name: "Fish Food Pellets", price: "$5.99", category: "Food", image: require("../../assets/prod1.jpg") },
   { id: "2", name: "Aquarium Heater", price: "$25.99", category: "Equipment", image: require("../../assets/prod2.jpg") },
@@ -53,7 +53,7 @@ export default function ProductsScreen() {
       </View>
 
       {/* Product List */}
-      <FlatList
+      {/* <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id}
         renderItem={renderProduct}
@@ -61,7 +61,15 @@ export default function ProductsScreen() {
         columnWrapperStyle={{ justifyContent: "space-between" }}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
-      />
+      /> */}
+
+      <View style={styles.wipOverlay}>
+        <Animated.View style={styles.wipContainer}>
+          <Feather name="tool" size={50} color="#00CED1" style={{ marginBottom: 16 }} />
+          <Text style={styles.wipTitle}>Feature Under Progress</Text>
+          <Text style={styles.wipText}>We’re working on this feature. It’ll be available soon 🚀</Text>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -143,4 +151,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonText: { color: "white", fontSize: 10, fontWeight: "bold" },
+  wipOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    // backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  wipContainer: {
+    width: "80%",
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  wipTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#00CED1",
+    marginBottom: 8,
+  },
+  wipText: {
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  wipCloseBtn: {
+    backgroundColor: "#00CED1",
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+  },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, TextInput, ActivityIndicator, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { baseUrl } from "../../config";
@@ -15,9 +15,11 @@ export default function TanksScreen() {
   const [tanksData, setTanksData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [noTanks, setNoTanks] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedTank, setSelectedTank] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const navigation = useNavigation();
 
-  // Dummy local images to cycle through
   const localImages = [require("../../assets/tank1.jpg"), require("../../assets/tank2.jpg"), require("../../assets/tank3.jpg"), require("../../assets/tank4.jpg"), require("../../assets/tank5.jpg")];
 
   useFocusEffect(
@@ -37,7 +39,6 @@ export default function TanksScreen() {
           });
 
           const result = await response.json();
-
           if (!isActive) return;
 
           if (response.ok && result.data.tanks) {
@@ -51,28 +52,19 @@ export default function TanksScreen() {
               image: localImages[index % localImages.length],
               waterParams: tank?.latest_water_parameters || [],
             }));
-
             setTanksData(mappedData);
           } else {
-            console.error("Failed to fetch tanks here:", result);
             if (result.status_code == 401) {
-              logout(); // clear token from context + AsyncStorage
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Login" }],
-              });
+              logout();
+              navigation.reset({ index: 0, routes: [{ name: "Login" }] });
             }
             setTanksData([]);
             setNoTanks(true);
           }
         } catch (error) {
-          console.error("Error fetching tanks:", error);
           if (error.status == 401) {
             logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Login" }],
-            });
+            navigation.reset({ index: 0, routes: [{ name: "Login" }] });
           }
           setTanksData([]);
           setNoTanks(true);
@@ -82,12 +74,40 @@ export default function TanksScreen() {
       };
 
       fetchTanks();
-
       return () => {
         isActive = false;
       };
     }, [token, baseUrl])
   );
+
+  const handleDeleteTank = async () => {
+    if (!selectedTank) return;
+    try {
+      setDeleting(true);
+      const response = await fetch(`${baseUrl}/tanks/tank/delete/${selectedTank.id}/`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        setTanksData((prev) => prev.filter((t) => t.id !== selectedTank.id));
+      } else if (response.status === 401) {
+        logout();
+        navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+      } else {
+        console.error("Failed to delete tank:", response);
+      }
+    } catch (error) {
+      console.error("Error deleting tank:", error);
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+      setSelectedTank(null);
+    }
+  };
 
   const filteredTanks = tanksData.filter((tank) => tank.name.toLowerCase().includes(searchText.toLowerCase()));
 
@@ -103,7 +123,7 @@ export default function TanksScreen() {
             onPress={() =>
               navigation.navigate("TankDetail", {
                 tankId: item.id,
-                tankData: item, // passing existing tank info
+                tankData: item,
               })
             }
           >
@@ -118,17 +138,24 @@ export default function TanksScreen() {
 
         <View style={{ flexDirection: "row", gap: 10 }}>
           <TouchableOpacity
-            style={{ ...styles.activateButton, flex: 1, flexDirection: "row", justifyContent: "space-around", backgroundColor: "#1f1f1fff" }}
+            style={{
+              ...styles.activateButton,
+              flex: 1,
+              flexDirection: "row",
+              justifyContent: "space-around",
+              backgroundColor: "#1f1f1fff",
+            }}
             onPress={() =>
               navigation.navigate("UpdateTank", {
                 tankId: item.id,
-                tankData: item, // passing existing tank info
+                tankData: item,
               })
             }
           >
             <Text style={{ ...styles.activateText, color: "#00CED1" }}>Update</Text>
             <AntDesign name="setting" size={24} color="#00CED1" />
           </TouchableOpacity>
+
           <TouchableOpacity
             style={{
               ...styles.activateButton,
@@ -138,22 +165,27 @@ export default function TanksScreen() {
             }}
             onPress={async () => {
               if (item.id === activeTankId) {
-                navigation.navigate("Dashboard"); // redirect
+                navigation.navigate("Dashboard");
               } else {
                 await activateTank(item.id);
-                Toast.show("Tank activated successfully!", {
-                  duration: Toast.durations.SHORT,
-                  position: Toast.positions.BOTTOM,
-                  backgroundColor: item.id === activeTankId ? "#32CD32" : "#1f1f1fff",
-
-                  textColor: "#fff",
-                });
               }
             }}
           >
             <Text style={styles.activateText}>{item.id === activeTankId ? "CHECK STATS" : "ACTIVATE"}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* 🗑️ Delete Button */}
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => {
+            setSelectedTank(item);
+            setShowDeleteModal(true);
+          }}
+        >
+          <Feather name="trash-2" size={20} color="#fff" />
+          <Text style={styles.deleteText}>Delete</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -165,15 +197,21 @@ export default function TanksScreen() {
       </View>
     );
   }
+
   if (noTanks || (tanksData && tanksData.length == 0)) {
     return (
       <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
-        <View>
-          <MaterialCommunityIcons name="fishbowl-outline" size={150} color="#858585ff" />
-        </View>
+        <MaterialCommunityIcons name="fishbowl-outline" size={150} color="#858585ff" />
         <Text style={styles.pText}>No tanks to Show :(</Text>
         <TouchableOpacity
-          style={{ ...styles.activateButton, flexDirection: "row", justifyContent: "space-between", paddingLeft: 20, marginTop: 50, borderRadius: 30, boxShadow: "0 10px 10px rgba(0,0,0,0.2)" }}
+          style={{
+            ...styles.activateButton,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingLeft: 20,
+            marginTop: 50,
+            borderRadius: 30,
+          }}
           onPress={() => navigation.navigate("AddTank")}
         >
           <Text style={{ ...styles.activateText, color: "#000", marginRight: 20, fontSize: 20 }}>Add Tank</Text>
@@ -185,17 +223,37 @@ export default function TanksScreen() {
 
   return (
     <View style={styles.container}>
-      {console.log(filteredTanks)}
       <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("AddTank")}>
         <FontAwesome6 name="add" size={24} color="black" />
       </TouchableOpacity>
-      {/* Search Bar */}
+
       <View style={styles.searchBar}>
         <Feather name="search" size={20} color="#999" />
         <TextInput placeholder="Search tanks..." placeholderTextColor="#999" value={searchText} onChangeText={setSearchText} style={styles.searchInput} />
       </View>
 
       <FlatList data={filteredTanks} keyExtractor={(item) => item.id.toString()} renderItem={renderTankCard} contentContainerStyle={{ paddingBottom: 200 }} />
+
+      {/* 🧾 Delete Confirmation Modal */}
+      <Modal visible={showDeleteModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Delete Tank</Text>
+            <Text style={styles.modalText}>
+              Are you sure you want to delete <Text style={{ fontWeight: "bold" }}>{selectedTank?.name}</Text>?
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: "#ccc" }]} onPress={() => setShowDeleteModal(false)} disabled={deleting}>
+                <Text style={styles.modalBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: "#E74C3C" }]} onPress={handleDeleteTank} disabled={deleting}>
+                <Text style={styles.modalBtnText}>{deleting ? "Deleting..." : "Delete"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -204,22 +262,15 @@ const styles = StyleSheet.create({
   addButton: {
     width: 60,
     height: 60,
-    borderRadius: 30, // should be half of width/height
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#00CED1",
     position: "absolute",
-    bottom: 100, // offset so it's not cut off
+    bottom: 100,
     right: 20,
-    boxShadow: "0 0 10px rgba(0,0,0,0.5)",
     zIndex: 9,
   },
-  pText: {
-    fontWeight: "bold",
-    fontSize: 18,
-    color: "#3f3f3fff",
-  },
-
   container: { flex: 1, backgroundColor: "#F8F8F8", padding: 16 },
   searchBar: {
     flexDirection: "row",
@@ -229,9 +280,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 8,
     marginBottom: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
   },
   searchInput: { marginLeft: 10, flex: 1, fontSize: 16, color: "#000" },
   card: {
@@ -259,4 +307,34 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   activateText: { color: "#fff", fontWeight: "bold" },
+  deleteButton: {
+    backgroundColor: "#E74C3C",
+    marginTop: 10,
+    padding: 8,
+    borderRadius: 8,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  deleteText: { color: "#fff", fontWeight: "600" },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 20,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
+  modalText: { fontSize: 15, color: "#444", marginBottom: 20 },
+  modalButtons: { flexDirection: "row", justifyContent: "flex-end", gap: 10 },
+  modalBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  modalBtnText: { color: "#fff", fontWeight: "600" },
+  pText: { fontWeight: "bold", fontSize: 18, color: "#3f3f3fff" },
 });

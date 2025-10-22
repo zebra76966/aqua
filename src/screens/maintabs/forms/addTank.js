@@ -37,7 +37,7 @@ const AddTank = ({ navigation }) => {
         body: JSON.stringify({
           name: tankName,
           tank_type: tankType.toUpperCase() === "FRESHWATER" ? "FRESH" : "SALT",
-          size: parseFloat(tankSize),
+          size: parseFloat(tankSize.toFixed(1)),
           size_unit: sizeUnit,
           notes,
         }),

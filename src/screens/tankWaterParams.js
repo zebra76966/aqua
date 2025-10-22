@@ -149,6 +149,13 @@ export default function TankAddWaterParams({ navigation }) {
       </View> */}
 
       {renderWaterForm()}
+      {origin === "TankScan" ? (
+        <View style={{ ...styles.skipContainer, marginBottom: 80 }}>
+          <TouchableOpacity style={styles.skipButton} onPress={() => navigation.navigate("MainTabs")}>
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -203,4 +210,28 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   saveText: { color: "#00CED1", fontWeight: "bold", fontSize: 16 },
+  skipContainer: {
+    position: "absolute",
+    bottom: 30,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+  },
+  skipButton: {
+    backgroundColor: "#00CED1",
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  skipText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    letterSpacing: 0.5,
+  },
 });

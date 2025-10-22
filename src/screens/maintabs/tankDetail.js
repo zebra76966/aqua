@@ -5,6 +5,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../../authcontext";
 import { baseUrl } from "../../config";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import { Ionicons } from "@expo/vector-icons";
 const TankDetailsScreen = () => {
   const route = useRoute();
   const { token } = useContext(AuthContext);
@@ -158,6 +159,12 @@ const TankDetailsScreen = () => {
 
   return (
     <View style={{ flex: 1, ...styles.container }}>
+      <View style={{ ...styles.header }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
+          <Ionicons name="arrow-back" size={24} color="#00CED1" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}> Tanks</Text>
+      </View>
       <View style={styles.tankCard}>
         <MaterialCommunityIcons name="fishbowl" size={40} color={styles.colors.primary} />
         <View style={{ marginLeft: 12, flex: 1 }}>
@@ -613,6 +620,20 @@ const styles = StyleSheet.create({
     color: "#333",
     marginLeft: 8,
     flexShrink: 1, // Allow text to wrap
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  backBtn: {
+    padding: 6,
+    marginRight: 10,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
   },
 });
 

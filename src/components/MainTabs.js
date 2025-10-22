@@ -50,13 +50,13 @@ export default function MainTabs() {
             }}
           />
 
-          <Tab.Screen
+          {/* <Tab.Screen
             name="Water"
             component={WaterScreen}
             options={{
               tabBarIcon: ({ color }) => <Entypo name="drop" size={22} color={color} />,
             }}
-          />
+          /> */}
           <Tab.Screen
             name="Store"
             component={ProductsScreen}
