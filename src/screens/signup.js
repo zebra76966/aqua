@@ -9,9 +9,15 @@ const SignupScreen = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const [errors, setErrors] = useState({});
+  const [globalError, setGlobalError] = useState("");
+
   const handleSignup = async () => {
+    setErrors({});
+    setGlobalError("");
+
     if (!username || !email || !name || !password) {
-      Alert.alert("Error", "Please fill in all fields.");
+      setGlobalError("Please fill in all fields.");
       return;
     }
 
@@ -31,18 +37,31 @@ const SignupScreen = ({ navigation }) => {
       });
 
       const data = await response.json();
+      console.log("Response:", data);
 
       if (!response.ok) {
-        throw new Error(data.detail || "Signup failed");
+        // Backend returns this structure:
+        // {"dev_msg": {"username": ["A user with that username already exists."]}, ...}
+        if (data.dev_msg) {
+          setErrors(data.dev_msg);
+          setGlobalError(data.message || "Signup failed");
+        } else {
+          setGlobalError(data.message || "Signup failed");
+        }
+        return;
       }
 
       Alert.alert("Success", "Account created successfully!");
       navigation.navigate("Login");
     } catch (error) {
-      Alert.alert("Signup Error", error.message);
+      setGlobalError(error.message || "Something went wrong");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getBorderColor = (field) => {
+    return errors[field] ? "#ff4d4f" : "#2cd4c8";
   };
 
   return (
@@ -55,10 +74,38 @@ const SignupScreen = ({ navigation }) => {
           {/* Welcome */}
           <Text style={styles.welcome}>Sign Up</Text>
 
-          <TextInput placeholder="Full Name" placeholderTextColor="#2cd4c8" style={styles.input} value={name} onChangeText={setName} />
-          <TextInput placeholder="Username" placeholderTextColor="#2cd4c8" style={styles.input} value={username} onChangeText={setUsername} />
-          <TextInput placeholder="Email" placeholderTextColor="#2cd4c8" keyboardType="email-address" style={styles.input} value={email} onChangeText={setEmail} />
-          <TextInput placeholder="Password" placeholderTextColor="#2cd4c8" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
+          {/* Global error message */}
+          {globalError ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{globalError}</Text>
+            </View>
+          ) : null}
+
+          <TextInput placeholder="Full Name" placeholderTextColor="#2cd4c8" style={[styles.input, { borderColor: getBorderColor("name") }]} value={name} onChangeText={setName} />
+          {errors.name && <Text style={styles.fieldError}>{errors.name[0]}</Text>}
+
+          <TextInput placeholder="Username" placeholderTextColor="#2cd4c8" style={[styles.input, { borderColor: getBorderColor("username") }]} value={username} onChangeText={setUsername} />
+          {errors.username && <Text style={styles.fieldError}>{errors.username[0]}</Text>}
+
+          <TextInput
+            placeholder="Email"
+            placeholderTextColor="#2cd4c8"
+            keyboardType="email-address"
+            style={[styles.input, { borderColor: getBorderColor("email") }]}
+            value={email}
+            onChangeText={setEmail}
+          />
+          {errors.email && <Text style={styles.fieldError}>{errors.email[0]}</Text>}
+
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor="#2cd4c8"
+            secureTextEntry
+            style={[styles.input, { borderColor: getBorderColor("password") }]}
+            value={password}
+            onChangeText={setPassword}
+          />
+          {errors.password && <Text style={styles.fieldError}>{errors.password[0]}</Text>}
 
           <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={isLoading}>
             {isLoading ? <ActivityIndicator color="#004d40" /> : <Text style={styles.buttonText}>Sign Up</Text>}
@@ -83,7 +130,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     paddingHorizontal: 20,
     justifyContent: "center",
-    paddingVertical: 40, // extra space for smaller screens
+    paddingVertical: 40,
   },
   logo: {
     fontSize: 40,
@@ -96,13 +143,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#333",
     textAlign: "center",
-    marginBottom: 30,
+    marginBottom: 20,
+  },
+  errorBox: {
+    backgroundColor: "#ffeaea",
+    borderWidth: 1,
+    borderColor: "#ff4d4f",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  errorText: {
+    color: "#b00020",
+    textAlign: "center",
+  },
+  fieldError: {
+    color: "#b00020",
+    fontSize: 13,
+    marginTop: -10,
+    marginBottom: 10,
+    marginLeft: 5,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#2cd4c8",
     padding: 10,
-    marginBottom: 15,
+    marginBottom: 10,
     borderRadius: 10,
     color: "#000",
   },
@@ -111,6 +176,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
+    marginTop: 10,
   },
   buttonText: {
     color: "#004d40",

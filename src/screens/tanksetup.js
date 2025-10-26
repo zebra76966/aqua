@@ -1,5 +1,5 @@
-import React, { useState, useContext, useCallback, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, ScrollView, Keyboard, TouchableWithoutFeedback } from "react-native";
+import React, { useState, useContext, useCallback } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, KeyboardAvoidingView, ScrollView, Keyboard, TouchableWithoutFeedback, Alert } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Slider from "@react-native-community/slider";
 import Icon from "react-native-vector-icons/FontAwesome5";
@@ -17,10 +17,10 @@ const TankSetupScreen = ({ navigation }) => {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingTanks, setCheckingTanks] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const { token, logout } = useContext(AuthContext);
 
-  // ✅ Helper function to handle unauthorized responses
   const handleUnauthorized = () => {
     Alert.alert("Session Expired", "Please log in again to continue.");
     logout();
@@ -47,7 +47,6 @@ const TankSetupScreen = ({ navigation }) => {
             },
           });
 
-          // ✅ Check for token expiry
           if (response.status === 401) {
             if (isActive) handleUnauthorized();
             return;
@@ -80,11 +79,12 @@ const TankSetupScreen = ({ navigation }) => {
 
   const handleSubmit = async () => {
     if (!tankName || !tankType || !tankSize) {
-      Alert.alert("Error", "Please fill in all required fields.");
+      setErrorMsg("Please fill in all required fields.");
       return;
     }
 
     setLoading(true);
+    setErrorMsg("");
 
     try {
       const response = await fetch(`${baseUrl}/tanks/tank/create/`, {
@@ -102,7 +102,6 @@ const TankSetupScreen = ({ navigation }) => {
         }),
       });
 
-      // ✅ Handle expired/invalid token
       if (response.status === 401) {
         handleUnauthorized();
         return;
@@ -116,17 +115,17 @@ const TankSetupScreen = ({ navigation }) => {
           tankDataLocal: { name: tankName, id: data?.data?.id },
         });
       } else {
-        Alert.alert("Error", data?.detail || "Something went wrong.");
+        const message = data?.dev_msg?.name?.[0] || data?.message || "Something went wrong. Please try again.";
+        setErrorMsg(message);
         console.error("Tank creation failed:", data);
       }
     } catch (error) {
-      Alert.alert("Error", error.message);
+      setErrorMsg(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Show loader while checking for tanks
   if (checkingTanks) {
     return (
       <View style={[styles.container, { justifyContent: "center" }]}>
@@ -136,7 +135,6 @@ const TankSetupScreen = ({ navigation }) => {
     );
   }
 
-  // ✅ If no tanks, show setup form
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "#ffffff" }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -199,6 +197,13 @@ const TankSetupScreen = ({ navigation }) => {
             <TextInput style={styles.input} placeholder="Notes (optional)" placeholderTextColor="#999" value={notes} onChangeText={setNotes} />
           </View>
 
+          {/* Error Message */}
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
+
           {/* Continue */}
           <TouchableOpacity style={{ ...styles.continueButton, backgroundColor: "#00CED1" }} onPress={handleSubmit} disabled={loading}>
             {loading ? (
@@ -210,7 +215,6 @@ const TankSetupScreen = ({ navigation }) => {
               </>
             )}
           </TouchableOpacity>
-          {console.log(tankSize)}
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -291,6 +295,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginRight: 10,
+  },
+  errorBox: {
+    backgroundColor: "#ffeaea",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ffb3b3",
+  },
+  errorText: {
+    color: "#cc0000",
+    textAlign: "center",
+    fontWeight: "600",
   },
 });
 

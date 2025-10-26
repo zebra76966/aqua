@@ -17,6 +17,7 @@ const DiseaseScanScreen = () => {
   const [scanned, setScanned] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [scanData, setScanData] = useState([]);
+  const [zoom, setZoom] = useState(0);
 
   const cameraRef = useRef(null);
   const sheetRef = useRef(null);
@@ -156,7 +157,20 @@ const DiseaseScanScreen = () => {
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
+      <CameraView style={styles.camera} facing={facing} ref={cameraRef} zoom={zoom} />
+      <View style={styles.zoomVerticalContainer}>
+        <TouchableOpacity style={styles.zoomButton} onPress={() => setZoom(Math.min(1, zoom + 0.1))}>
+          <Icon name="plus" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        <View style={styles.zoomVerticalBar}>
+          <View style={[styles.zoomVerticalLevel, { height: `${zoom * 100}%` }]} />
+        </View>
+
+        <TouchableOpacity style={styles.zoomButton} onPress={() => setZoom(Math.max(0, zoom - 0.1))}>
+          <Icon name="minus" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
       {scanned || isUploading ? (
         <LoadingScreen />
@@ -239,5 +253,72 @@ const styles = StyleSheet.create({
   },
   iconPulse: {
     transform: [{ scale: 1 }],
+  },
+  zoomContainer: {
+    alignItems: "center",
+    marginTop: 10,
+  },
+  zoomLabel: {
+    color: "#fff",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  zoomSlider: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "70%",
+  },
+  zoomBar: {
+    height: 4,
+    flex: 1,
+    backgroundColor: "#555",
+    borderRadius: 2,
+    marginHorizontal: 10,
+    overflow: "hidden",
+  },
+  zoomLevel: {
+    height: "100%",
+    backgroundColor: "#2cd4c8",
+  },
+  zoomVerticalContainer: {
+    position: "absolute",
+    top: 80, // tweak for your layout
+    right: 20,
+    alignItems: "center",
+    zIndex: 10,
+  },
+
+  zoomButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+
+  zoomVerticalBar: {
+    width: 5,
+    height: 110,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 3,
+    marginVertical: 8,
+    overflow: "hidden",
+  },
+
+  zoomVerticalLevel: {
+    width: "100%",
+    backgroundColor: "#2cd4c8",
+    position: "absolute",
+    bottom: 0,
   },
 });

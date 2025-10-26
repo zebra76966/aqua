@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Slider from "@react-native-community/slider";
 import Icon from "react-native-vector-icons/FontAwesome5";
@@ -13,19 +13,21 @@ const AddTank = ({ navigation }) => {
   const [tankName, setTankName] = useState("");
   const [tankType, setTankType] = useState("");
   const [tankSize, setTankSize] = useState(35.6);
-  const [sizeUnit, setSizeUnit] = useState("L"); // Default Gallons
+  const [sizeUnit, setSizeUnit] = useState("L"); // Default Litres
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(""); // Error message state
 
   const { token } = useContext(AuthContext);
 
   const handleSubmit = async () => {
     if (!tankName || !tankType || !tankSize) {
-      Alert.alert("Error", "Please fill in all required fields.");
+      setErrorMessage("Please fill in all required fields.");
       return;
     }
 
     setLoading(true);
+    setErrorMessage(""); // Reset previous errors
 
     try {
       const response = await fetch(`${baseUrl}/tanks/tank/create/`, {
@@ -44,16 +46,21 @@ const AddTank = ({ navigation }) => {
       });
 
       const data = await response.json();
+      console.error("Tank creation failed:", data);
 
       if (response.ok) {
         Alert.alert("Success", "Tank Added Successfully!");
         navigation.goBack();
       } else {
-        Alert.alert("Error", data?.detail || "Something went wrong.");
-        console.error("Tank creation failed:", data);
+        // Display backend validation errors
+        if (data?.dev_msg?.name?.length > 0) {
+          setErrorMessage(data.dev_msg.name[0]);
+        } else {
+          setErrorMessage(data?.message || "Something went wrong.");
+        }
       }
     } catch (error) {
-      Alert.alert("Error", error.message);
+      setErrorMessage(error.message);
     } finally {
       setLoading(false);
     }
@@ -61,12 +68,20 @@ const AddTank = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={{ ...styles.header }}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
           <Ionicons name="arrow-back" size={24} color="#00CED1" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Tank</Text>
       </View>
+
+      {/* Display Error Message */}
+      {errorMessage ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      ) : null}
+
       {/* Tank Name */}
       <View style={styles.inputContainer}>
         <Icon name="hashtag" size={16} color="#333" style={styles.icon} />
@@ -142,7 +157,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-
     backgroundColor: "#f9f9f9",
   },
   title: {
@@ -225,7 +239,6 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     flexDirection: "row",
-    backgroundColor: "#111",
     paddingVertical: 14,
     justifyContent: "center",
     alignItems: "center",
@@ -237,28 +250,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginRight: 10,
   },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#ccc",
-  },
-  orText: {
-    marginHorizontal: 10,
-    color: "#999",
-  },
-  saveBtn: {
-    backgroundColor: "#1f1f1f",
-    padding: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  saveText: { color: "#00CED1", fontWeight: "bold", fontSize: 16 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -272,6 +263,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+  },
+  errorContainer: {
+    backgroundColor: "#ffe6e6",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#cc0000",
+    fontWeight: "bold",
   },
 });
 

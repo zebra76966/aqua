@@ -4,7 +4,6 @@ import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { makeRedirectUri, exchangeCodeAsync, useAutoDiscovery, ResponseType } from "expo-auth-session";
-
 import styles from "./login.stylesheet";
 import useThemeStyles from "../useThemeStyle";
 import { baseUrl } from "../config";
@@ -13,10 +12,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 WebBrowser.maybeCompleteAuthSession();
 
-// --- IDs from backend ---
 const ANDROID_CLIENT_ID = "859674051212-kp746doga77holq4lqe2eiducpoqliuv.apps.googleusercontent.com";
 const WEB_CLIENT_ID = "859674051212-0gn7dvr1jslospmpe8mkm4aooqct0f8p.apps.googleusercontent.com";
-// TODO: Replace with your iOS client ID when backend provides it
 const IOS_CLIENT_ID = "859674051212-xxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com";
 
 export default function LoginScreen({ navigation }) {
@@ -24,25 +21,21 @@ export default function LoginScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState({});
+  const [globalError, setGlobalError] = useState("");
+
   const { colors } = useThemeStyles();
   const { token, login, loading } = useContext(AuthContext);
 
-  // Redirect if token exists
   useEffect(() => {
     if (!loading && token) {
       navigation.replace("tankSetup");
     }
   }, [loading, token, navigation]);
 
-  // Google discovery document (endpoints)
   const discovery = useAutoDiscovery("https://accounts.google.com");
+  const redirectUri = makeRedirectUri({ useProxy: true });
 
-  // ✅ Correct redirectUri setup
-  const redirectUri = makeRedirectUri({
-    useProxy: true, // forces https://auth.expo.dev/...
-  });
-
-  // Build Google request
   const [request, response, promptAsync] = Google.useAuthRequest(
     {
       androidClientId: ANDROID_CLIENT_ID,
@@ -50,23 +43,18 @@ export default function LoginScreen({ navigation }) {
       webClientId: WEB_CLIENT_ID,
       responseType: ResponseType.Code,
       scopes: ["openid", "email", "profile"],
-      redirectUri, // <- matches the https://auth.expo.dev/... one
+      redirectUri,
     },
     discovery
   );
 
-  // Handle response
   useEffect(() => {
-    console.log("Redirect URI being used:", redirectUri);
     (async () => {
       if (!response || response.type !== "success" || !discovery || !request) return;
 
       try {
         setIsLoading(true);
-
         const { code } = response.params;
-
-        // Exchange code for tokens
         const tokenResult = await exchangeCodeAsync(
           {
             clientId: Platform.OS === "android" ? ANDROID_CLIENT_ID : Platform.OS === "ios" ? IOS_CLIENT_ID : WEB_CLIENT_ID,
@@ -80,30 +68,22 @@ export default function LoginScreen({ navigation }) {
         const idToken = tokenResult.idToken || tokenResult.id_token;
         if (!idToken) throw new Error("No id_token returned from Google");
 
-        // Send id_token to your backend
-        // const r = await fetch(`${baseUrl}/user/google-login/`, {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ id_token: idToken }),
-        // });
-        // const data = await r.json();
-        // if (!r.ok) throw new Error(data.detail || "Google login failed");
-        // await login(data.token);
-
-        await login(idToken); // temp
+        await login(idToken);
         navigation.navigate("tankSetup");
       } catch (err) {
-        Alert.alert("Google Login Error", err?.message || String(err));
+        setGlobalError(err?.message || "Google login failed");
       } finally {
         setIsLoading(false);
       }
     })();
   }, [response, discovery, request]);
 
-  // Username/password fallback
   const handleSubmit = async () => {
+    setErrors({});
+    setGlobalError("");
+
     if (!username || !password) {
-      Alert.alert("Error", "Please enter both username and password.");
+      setGlobalError("Please enter both username and password.");
       return;
     }
 
@@ -115,11 +95,22 @@ export default function LoginScreen({ navigation }) {
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Login failed");
+      console.log("Login response:", data);
+
+      if (!res.ok) {
+        if (data.dev_msg) {
+          setErrors(data.dev_msg);
+          setGlobalError(data.message || "Login failed");
+        } else {
+          setGlobalError(data.message || data.detail || "Login failed");
+        }
+        return;
+      }
+
       await login(data.access);
       navigation.navigate("tankSetup");
     } catch (error) {
-      Alert.alert("Login Error", error.message);
+      setGlobalError(error.message || "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -132,11 +123,14 @@ export default function LoginScreen({ navigation }) {
     }
     try {
       setIsLoading(true);
-      // ✅ Force Expo Proxy redirect (auth.expo.dev)
       await promptAsync({ useProxy: true });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getBorderColor = (field) => {
+    return errors[field] ? "#ff4d4f" : "#2cd4c8";
   };
 
   return (
@@ -146,14 +140,39 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.logo}>aqua</Text>
           <Text style={styles.welcome}>Welcome Back!</Text>
 
-          <TextInput style={styles.input} placeholder="Username" placeholderTextColor="#2cd4c8" value={username} onChangeText={setUsername} autoCapitalize="none" />
+          {/* Global error */}
+          {globalError ? (
+            <View
+              style={{
+                backgroundColor: "#ffeaea",
+                borderColor: "#ff4d4f",
+                borderWidth: 1,
+                borderRadius: 8,
+                padding: 10,
+                marginBottom: 15,
+              }}
+            >
+              <Text style={{ color: "#b00020", textAlign: "center" }}>{globalError}</Text>
+            </View>
+          ) : null}
 
-          <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.input, { borderColor: getBorderColor("username"), borderWidth: 1 }]}
+            placeholder="Username"
+            placeholderTextColor="#2cd4c8"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+          />
+          {errors.username && <Text style={{ color: "#b00020", marginLeft: 5, marginBottom: 8 }}>{errors.username[0]}</Text>}
+
+          <View style={[styles.passwordContainer, { borderColor: getBorderColor("password"), borderWidth: 1 }]}>
             <TextInput style={styles.passwordInput} placeholder="Password" placeholderTextColor="#2cd4c8" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
               <Ionicons name={showPassword ? "eye" : "eye-off"} size={22} color="#2cd4c8" />
             </TouchableOpacity>
           </View>
+          {errors.password && <Text style={{ color: "#b00020", marginLeft: 5, marginBottom: 8 }}>{errors.password[0]}</Text>}
 
           <View style={styles.divider}>
             <View style={styles.line} />
