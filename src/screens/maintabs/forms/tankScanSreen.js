@@ -17,6 +17,7 @@ const TankScanScreenTabs = () => {
   const [scanned, setScanned] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [scanData, setScanData] = useState([]);
+  const [scanType, setScanType] = useState("fish");
 
   const cameraRef = useRef(null);
   const sheetRef = useRef(null);
@@ -77,6 +78,8 @@ const TankScanScreenTabs = () => {
         name: "scan.jpg",
         type: "application/octet-stream",
       });
+
+      formData.append("type", scanType);
 
       const response = await fetch(`${baseUrl}/ai-model/inference/multimodel/`, {
         method: "POST",
@@ -318,9 +321,20 @@ const TankScanScreenTabs = () => {
         <LoadingScreen />
       ) : (
         <View style={{ ...styles.overlay, paddingBottom: 50 }}>
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity style={[styles.toggleButton, scanType === "fish" && styles.activeToggle]} onPress={() => setScanType("fish")}>
+              <Text style={[styles.toggleText, scanType === "fish" && styles.activeText]}>Fish</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.toggleButton, scanType === "plant" && styles.activeToggle]} onPress={() => setScanType("plant")}>
+              <Text style={[styles.toggleText, scanType === "plant" && styles.activeText]}>Plant</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity style={styles.button} onPress={handleScan}>
             <Text style={styles.buttonText}>Scan Tank</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.flipButton} onPress={() => setFacing((prev) => (prev === "back" ? "front" : "back"))}>
             <Text style={styles.flipText}>Flip</Text>
           </TouchableOpacity>
@@ -464,5 +478,28 @@ const styles = StyleSheet.create({
   },
   iconPulse: {
     transform: [{ scale: 1 }],
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+  toggleButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "#2cd4c8",
+    borderRadius: 20,
+    marginHorizontal: 5,
+  },
+  activeToggle: {
+    backgroundColor: "#2cd4c8",
+  },
+  toggleText: {
+    color: "#2cd4c8",
+    fontWeight: "600",
+  },
+  activeText: {
+    color: "#fff",
   },
 });
