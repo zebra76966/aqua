@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Slider from "@react-native-community/slider";
 import Icon from "react-native-vector-icons/FontAwesome5";
@@ -46,7 +46,6 @@ const AddTank = ({ navigation }) => {
       });
 
       const data = await response.json();
-      console.error("Tank creation failed:", data);
 
       if (response.ok) {
         Alert.alert("Success", "Tank Added Successfully!");
