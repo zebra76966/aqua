@@ -15,6 +15,8 @@ import { AuthProvider } from "./src/authcontext";
 import ImagePreview from "./src/screens/imageprevirew";
 import AddTank from "./src/screens/maintabs/forms/addTank";
 import TankAddWaterParams from "./src/screens/tankWaterParams";
+import FirstScreen from "./src/screens/home";
+import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -23,9 +25,12 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+          <Stack.Navigator initialRouteName="First" screenOptions={{ headerShown: false }}>
             {/* Screens WITHOUT navbar */}
+            <Stack.Screen name="First" component={FirstScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+
             <Stack.Screen name="Signup" component={SignupScreen} />
             <Stack.Screen name="tankSetup" component={TankSetupScreen} />
             <Stack.Screen name="TankScan" component={TankScanScreen} />
