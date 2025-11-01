@@ -158,26 +158,57 @@ const TankSetupScreen = ({ navigation }) => {
           </View>
 
           {/* Tank Size Slider */}
+          {/* Tank Size Slider + Input */}
           <View style={styles.sliderContainer}>
-            <View style={styles.sliderLabel}>
+            <View style={{ ...styles.sliderLabel, marginBottom: 30 }}>
               <MaterialIcons name="ruler" size={16} />
               <Text style={{ marginLeft: 6 }}>Tank Size ({sizeUnit})</Text>
             </View>
 
+            {/* Tank Size Input */}
             <View style={styles.sizeBox}>
-              <Text>{tankSize.toFixed(1)}</Text>
+              <TextInput
+                style={styles.sizeInput}
+                keyboardType="numeric"
+                value={tankSize.toFixed(2).toString()}
+                onChangeText={(val) => {
+                  const num = parseFloat(val);
+                  if (!isNaN(num)) {
+                    if (num > 200) {
+                      setErrorMsg("Tank size cannot exceed 200.");
+                    } else {
+                      setErrorMsg("");
+                      setTankSize(num);
+                    }
+                  } else if (val === "") {
+                    setTankSize(0);
+                    setErrorMsg("");
+                  }
+                }}
+                placeholder="0.00"
+                placeholderTextColor="#999"
+              />
             </View>
 
+            {/* Tank Size Slider */}
             <Slider
               style={{ width: "100%", height: 40 }}
               minimumValue={0}
               maximumValue={200}
               value={tankSize}
-              onValueChange={setTankSize}
+              onValueChange={(value) => {
+                setTankSize(value);
+                if (value > 200) {
+                  setErrorMsg("Tank size cannot exceed 200.");
+                } else {
+                  setErrorMsg("");
+                }
+              }}
               minimumTrackTintColor="#00CED1"
               maximumTrackTintColor="#000000"
               thumbTintColor="#00CED1"
             />
+
             <Text style={styles.sliderValue}>{tankSize.toFixed(1)}</Text>
           </View>
 
@@ -205,7 +236,14 @@ const TankSetupScreen = ({ navigation }) => {
           ) : null}
 
           {/* Continue */}
-          <TouchableOpacity style={{ ...styles.continueButton, backgroundColor: "#00CED1" }} onPress={handleSubmit} disabled={loading}>
+          <TouchableOpacity
+            style={{
+              ...styles.continueButton,
+              backgroundColor: errorMsg ? "#ccc" : "#00CED1",
+            }}
+            onPress={handleSubmit}
+            disabled={loading || !!errorMsg}
+          >
             {loading ? (
               <ActivityIndicator size="small" color="#000" />
             ) : (
@@ -222,6 +260,12 @@ const TankSetupScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  sizeInput: {
+    width: 60,
+    textAlign: "center",
+    fontSize: 16,
+    color: "#000",
+  },
   container: {
     flex: 1,
     padding: 24,
