@@ -11,11 +11,9 @@ export default function UpdateTankScreen({ route, navigation }) {
 
   const [activeForm, setActiveForm] = useState("tank"); // "tank" | "water"
 
-  console.log("Editing tank:", tankData);
-
   // Tank form state
   const [name, setName] = useState(tankData?.name || "");
-  const [tankType, setTankType] = useState(tankData?.tank_type || "FRESH");
+  const [tankType, setTankType] = useState(tankData?.waterType || "FRESH");
   const [size, setSize] = useState(String(tankData?.size || ""));
   const [sizeUnit, setSizeUnit] = useState(tankData?.size_unit || "L");
   const [notes, setNotes] = useState(tankData?.notes || "");
@@ -27,6 +25,12 @@ export default function UpdateTankScreen({ route, navigation }) {
   const [nitrate, setNitrate] = useState(String(tankData?.waterParams?.estimated_nitrate_ppm ?? ""));
   const [ammonia, setAmmonia] = useState(String(tankData?.waterParams?.estimated_ammonia_ppm ?? ""));
   const [ph, setPh] = useState(String(tankData?.waterParams?.estimated_ph ?? ""));
+
+  // New saltwater parameters
+  const [magnesium, setMagnesium] = useState(String(tankData?.waterParams?.magnesium_mgL ?? ""));
+  const [alkalinity, setAlkalinity] = useState(String(tankData?.waterParams?.alkalinity_dkh ?? ""));
+  const [calcium, setCalcium] = useState(String(tankData?.waterParams?.calcium_mgL ?? ""));
+  const [phosphate, setPhosphate] = useState(String(tankData?.waterParams?.phosphate_ppm ?? ""));
 
   const updateTank = async () => {
     try {
@@ -59,20 +63,27 @@ export default function UpdateTankScreen({ route, navigation }) {
 
   const updateWaterParams = async () => {
     try {
+      const body = {
+        temperature: parseFloat(temperature),
+        estimated_oxygen_mgL: parseFloat(oxygen),
+        estimated_nitrite_ppm: parseFloat(nitrite),
+        estimated_nitrate_ppm: parseFloat(nitrate),
+        estimated_ammonia_ppm: parseFloat(ammonia),
+        estimated_ph: parseFloat(ph),
+        // Saltwater-specific fields
+        magnesium_mgL: tankType === "SALT" ? parseFloat(magnesium) : null,
+        alkalinity_dkh: tankType === "SALT" ? parseFloat(alkalinity) : null,
+        calcium_mgL: tankType === "SALT" ? parseFloat(calcium) : null,
+        phosphate_ppm: tankType === "SALT" ? parseFloat(phosphate) : null,
+      };
+
       const res = await fetch(`${baseUrl}/tanks/${tankId}/water-parameters/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          temperature: parseFloat(temperature),
-          estimated_oxygen_mgL: parseFloat(oxygen),
-          estimated_nitrite_ppm: parseFloat(nitrite),
-          estimated_nitrate_ppm: parseFloat(nitrate),
-          estimated_ammonia_ppm: parseFloat(ammonia),
-          estimated_ph: parseFloat(ph), // NEW
-        }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
@@ -86,6 +97,13 @@ export default function UpdateTankScreen({ route, navigation }) {
       Alert.alert("Error", e.message);
     }
   };
+
+  const renderInput = (label, value, setter, placeholder) => (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 6 }}>{label}</Text>
+      <TextInput style={styles.input} placeholder={placeholder} value={value} onChangeText={setter} keyboardType="numeric" />
+    </View>
+  );
 
   const renderTankForm = () => (
     <ScrollView>
@@ -102,23 +120,23 @@ export default function UpdateTankScreen({ route, navigation }) {
   );
 
   const renderWaterForm = () => {
-    const hasValues = temperature.trim() !== "" || oxygen.trim() !== "" || nitrite.trim() !== "" || nitrate.trim() !== "" || ammonia.trim() !== "" || ph.trim() !== "";
-
-    const renderInput = (label, value, setter, placeholder) => (
-      <View style={{ marginBottom: 16 }}>
-        <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 6 }}>{label}</Text>
-        <TextInput style={styles.input} placeholder={placeholder} value={value} onChangeText={setter} keyboardType="numeric" />
-      </View>
-    );
+    const hasValues =
+      temperature.trim() !== "" ||
+      oxygen.trim() !== "" ||
+      nitrite.trim() !== "" ||
+      nitrate.trim() !== "" ||
+      ammonia.trim() !== "" ||
+      ph.trim() !== "" ||
+      (tankType === "SALT" && (magnesium.trim() !== "" || alkalinity.trim() !== "" || calcium.trim() !== "" || phosphate.trim() !== ""));
 
     return (
       <ScrollView>
-        {/* Scan button */}
         <TouchableOpacity
           style={{
             ...styles.activateButton,
             flexDirection: "row",
             justifyContent: "center",
+            alignItems: "center",
             paddingLeft: 20,
             marginBottom: 50,
             borderRadius: 8,
@@ -132,11 +150,21 @@ export default function UpdateTankScreen({ route, navigation }) {
           onPress={() =>
             navigation.navigate("PhScanScreen", {
               onScanComplete: (result) => {
-                if (result.estimated_ph) setPh(String(result.estimated_ph));
-                if (result.estimated_oxygen_mgL) setOxygen(String(result.estimated_oxygen_mgL));
-                if (result.estimated_nitrite_ppm) setNitrite(String(result.estimated_nitrite_ppm));
-                if (result.estimated_nitrate_ppm) setNitrate(String(result.estimated_nitrate_ppm));
-                if (result.estimated_ammonia_ppm) setAmmonia(String(result.estimated_ammonia_ppm));
+                // Common parameters
+                if (result?.estimated_ph !== undefined) setPh(String(result.estimated_ph));
+                if (result?.estimated_oxygen_mgL !== undefined) setOxygen(String(result.estimated_oxygen_mgL));
+                if (result?.estimated_nitrite_ppm !== undefined) setNitrite(String(result.estimated_nitrite_ppm));
+                if (result?.estimated_nitrate_ppm !== undefined) setNitrate(String(result.estimated_nitrate_ppm));
+                if (result?.estimated_ammonia_ppm !== undefined) setAmmonia(String(result.estimated_ammonia_ppm));
+                if (result?.temperature !== undefined) setTemperature(String(result.temperature));
+
+                // Saltwater-specific parameters (only update if tankType === "SALT")
+                if (tankType === "Salwater") {
+                  if (result?.magnesium_mgL !== undefined) setMagnesium(String(result.magnesium_mgL));
+                  if (result?.alkalinity_dkh !== undefined) setAlkalinity(String(result.alkalinity_dkh));
+                  if (result?.calcium_mgL !== undefined) setCalcium(String(result.calcium_mgL));
+                  if (result?.phosphate_ppm !== undefined) setPhosphate(String(result.phosphate_ppm));
+                }
               },
             })
           }
@@ -145,12 +173,14 @@ export default function UpdateTankScreen({ route, navigation }) {
             style={{
               ...styles.activateText,
               color: "#000",
-              marginRight: 20,
+              marginRight: 12,
               fontSize: 18,
+              fontWeight: "600",
             }}
           >
-            Scan Ph Strip
+            Scan Water Parameters
           </Text>
+
           <MaterialCommunityIcons name="cube-scan" size={24} color="#000" />
         </TouchableOpacity>
 
@@ -161,7 +191,16 @@ export default function UpdateTankScreen({ route, navigation }) {
         {renderInput("Ammonia (ppm)", ammonia, setAmmonia, "Enter ammonia")}
         {renderInput("pH", ph, setPh, "Enter pH")}
 
-        {/* Conditionally render update button */}
+        {tankType === "Saltwater" && (
+          <>
+            <Text style={{ fontSize: 16, fontWeight: "700", marginTop: 20, marginBottom: 10 }}>Saltwater Parameters</Text>
+            {renderInput("Magnesium (mg/L)", magnesium, setMagnesium, "Enter magnesium")}
+            {renderInput("Alkalinity (dKH)", alkalinity, setAlkalinity, "Enter alkalinity")}
+            {renderInput("Calcium (mg/L)", calcium, setCalcium, "Enter calcium")}
+            {renderInput("Phosphate (ppm)", phosphate, setPhosphate, "Enter phosphate")}
+          </>
+        )}
+
         {hasValues && (
           <TouchableOpacity style={styles.saveBtn} onPress={updateWaterParams}>
             <Text style={styles.saveText}>Update Water Parameters</Text>
@@ -173,15 +212,13 @@ export default function UpdateTankScreen({ route, navigation }) {
 
   return (
     <View style={{ ...styles.container, paddingBottom: 100 }}>
-      {/* Header with back button */}
-      <View style={{ ...styles.header }}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
           <Ionicons name="arrow-back" size={24} color="#00CED1" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Update Tank</Text>
       </View>
 
-      {/* Toggle Buttons */}
       <View style={styles.toggleRow}>
         <TouchableOpacity style={[styles.toggleBtn, activeForm === "tank" && styles.activeToggle]} onPress={() => setActiveForm("tank")}>
           <Text style={styles.toggleText}>Tank Info</Text>

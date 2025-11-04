@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useContext } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, FlatList, Image, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, FlatList, Image, ScrollView, TouchableOpacity, Modal, TextInput, Alert, Animated } from "react-native";
 import { Feather, MaterialCommunityIcons, AntDesign } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../../authcontext";
 import { baseUrl } from "../../config";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+
 const TankDetailsScreen = () => {
   const route = useRoute();
   const { token } = useContext(AuthContext);
@@ -25,6 +27,21 @@ const TankDetailsScreen = () => {
   const [quantity, setQuantity] = useState("");
   const [notes, setNotes] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [addModalVisible, setAddModalVisible] = useState(false);
+
+  const [slideAnim1] = useState(new Animated.Value(60));
+  const [slideAnim2] = useState(new Animated.Value(60));
+
+  useEffect(() => {
+    if (isExpanded) {
+      Animated.spring(slideAnim1, { toValue: -150, useNativeDriver: true }).start();
+      Animated.spring(slideAnim2, { toValue: -70, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(slideAnim1, { toValue: 60, duration: 200, useNativeDriver: true }).start();
+      Animated.timing(slideAnim2, { toValue: 60, duration: 200, useNativeDriver: true }).start();
+    }
+  }, [isExpanded]);
 
   useEffect(() => {
     fetchTankData();
@@ -103,7 +120,7 @@ const TankDetailsScreen = () => {
         notes,
         last_scan_image_url: imageUrl,
       };
-      await fetch(`${baseUrl}/tanks/${tankId}/add-species/`, {
+      const res = await fetch(`${baseUrl}/tanks/${tankId}/add-species/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -111,6 +128,13 @@ const TankDetailsScreen = () => {
         },
         body: JSON.stringify(body),
       });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error("Failed to add species: " + errorText);
+      } else {
+        Alert.alert("Success", "Added successfully!");
+      }
       // Don't reset form fields here, assume a successful add leads to navigating back or clearing via context.
       // setAddModalVisible(false); // If you have an add modal, close it
       // setClassName("");
@@ -160,19 +184,17 @@ const TankDetailsScreen = () => {
   return (
     <View style={{ flex: 1, ...styles.container }}>
       <View style={{ ...styles.header }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
-          <Ionicons name="arrow-back" size={24} color="#00CED1" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}> Tanks</Text>
-      </View>
-      <View style={styles.tankCard}>
-        <MaterialCommunityIcons name="fishbowl" size={40} color={styles.colors.primary} />
-        <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={styles.tankName}>{tank.name}</Text>
-          <Text style={styles.tankDetail}>
-            {tank.tank_type} • {tank.size} {tank.size_unit}
-          </Text>
-          <Text style={styles.tankNotes}>{tank.notes}</Text>
+        <View style={styles.tankCard}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
+            <Ionicons name="arrow-back" size={24} color="#00CED1" />
+          </TouchableOpacity>
+          <View style={{ marginLeft: 12, flex: 1 }}>
+            <Text style={styles.tankName}>{tank.name}</Text>
+            <Text style={styles.tankDetail}>
+              {tank.tank_type} • {tank.size} {tank.size_unit}
+            </Text>
+            <Text style={styles.tankNotes}>{tank.notes}</Text>
+          </View>
         </View>
       </View>
 
@@ -312,17 +334,41 @@ const TankDetailsScreen = () => {
       )}
 
       {/* Floating Add Button */}
-      <TouchableOpacity
-        style={[styles.addButton, { bottom: 110, backgroundColor: "#ff8c00" }]}
-        onPress={() => {
-          navigation.navigate("TankScanScreenTabs", {
-            tankDataLocal: tank,
-            tankId: tank.id,
-          });
-        }}
-      >
-        <MaterialCommunityIcons name="cube-scan" size={26} color="#fff" />
-      </TouchableOpacity>
+      {/* Floating Action Button Group */}
+      <View style={{ position: "absolute", bottom: 50, right: 0 }}>
+        {/* Expanded Buttons */}
+        {isExpanded && (
+          <>
+            {/* Add Species Button */}
+            <Animated.View style={{ transform: [{ translateX: slideAnim1 }], bottom: -10 }}>
+              <TouchableOpacity style={[styles.addButton, { backgroundColor: "#4CAF50", marginBottom: 10 }]} onPress={() => setAddModalVisible(true)}>
+                <MaterialCommunityIcons name="plus" size={26} color="#fff" />
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Tank Scan Button */}
+            <Animated.View style={{ transform: [{ translateX: slideAnim2 }], bottom: -10 }}>
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: "#ff8c00", marginBottom: 10 }]}
+                onPress={() => {
+                  navigation.navigate("TankScanScreenTabs", {
+                    tankDataLocal: tank,
+                    tankId: tank.id,
+                  });
+                  setIsExpanded(false);
+                }}
+              >
+                <MaterialCommunityIcons name="cube-scan" size={26} color="#fff" />
+              </TouchableOpacity>
+            </Animated.View>
+          </>
+        )}
+
+        {/* Main Toggle Button */}
+        <TouchableOpacity style={[styles.addButton, { backgroundColor: "#00CED1" }]} onPress={() => setIsExpanded(!isExpanded)}>
+          <MaterialCommunityIcons name={isExpanded ? "close" : "menu"} size={26} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity
         style={[styles.addButton, { bottom: 180, backgroundColor: "#00b7ffff" }]}
@@ -381,6 +427,55 @@ const TankDetailsScreen = () => {
                 <Text style={styles.modalBtnText}>Close</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+      {/* Add Species Modal */}
+      <Modal visible={addModalVisible} transparent animationType="slide" onRequestClose={() => setAddModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { maxHeight: "90%" }]}>
+            <ScrollView>
+              <Text style={styles.modalTitle}>Add New Species</Text>
+
+              {/* Image Upload */}
+              {imageUrl ? <Image source={{ uri: imageUrl }} style={{ width: "100%", height: 180, borderRadius: 10, marginBottom: 10 }} /> : null}
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: "#00CED1", marginBottom: 12 }]}
+                onPress={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    quality: 0.7,
+                  });
+                  if (!result.canceled) {
+                    setImageUrl(result.assets[0].uri);
+                  }
+                }}
+              >
+                <Text style={styles.modalBtnText}>{imageUrl ? "Change Image" : "Upload Image"}</Text>
+              </TouchableOpacity>
+
+              {/* Form Inputs */}
+              <TextInput placeholder="Class Name" value={className} onChangeText={setClassName} style={styles.input} />
+              <TextInput placeholder="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="numeric" style={styles.input} />
+              <TextInput placeholder="Notes (optional)" value={notes} onChangeText={setNotes} multiline style={[styles.input, { height: 80 }]} />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: "#4CAF50" }]}
+                  onPress={async () => {
+                    await handleAddSpecies();
+                    setAddModalVisible(false);
+                    setIsExpanded(false);
+                  }}
+                >
+                  <Text style={styles.modalBtnText}>Submit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: "#aaa" }]} onPress={() => setAddModalVisible(false)}>
+                  <Text style={styles.modalBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>

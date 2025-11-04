@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
-import { useRoute } from "@react-navigation/native";
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, TextInput, Image, Alert, Animated } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import { useNavigation } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { Camera, useCameraPermissions, CameraType, CameraView } from "expo-camera";
 import { AuthContext } from "../authcontext";
 import { baseUrl } from "../config";
+
+// ✅ correct: use Video from expo-av (expo-video causes the "Element type is invalid" issue)
+import { Video } from "expo-av";
+
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import RBSheet from "react-native-raw-bottom-sheet";
-
 import * as ImageManipulator from "expo-image-manipulator";
 
 const TankScanScreen = () => {
@@ -15,12 +17,38 @@ const TankScanScreen = () => {
   const route = useRoute();
   const { tankDataLocal } = route.params;
   const [facing, setFacing] = useState("back");
+
   const [permission, requestPermission] = useCameraPermissions();
+
   const [scanned, setScanned] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [scanData, setScanData] = useState([]);
   const [scanType, setScanType] = useState("fish");
   const [zoom, setZoom] = useState(0);
+
+  const [recording, setRecording] = useState(false);
+  const [videoUri, setVideoUri] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (recording) {
+      interval = setInterval(() => {
+        setRecordingTime((prev) => {
+          if (prev >= 9) {
+            // Stop at 10
+            cameraRef.current?.stopRecording();
+            return 10;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [recording]);
 
   const cameraRef = useRef(null);
   const sheetRef = useRef(null);
@@ -31,38 +59,83 @@ const TankScanScreen = () => {
     if (!permission) requestPermission();
   }, []);
 
-  // --- CAMERA CAPTURE ---
-  const handleScan = async () => {
-    try {
-      setScanned(true);
-      if (!cameraRef.current) throw new Error("Camera not ready");
+  const handleRecordVideo = async () => {
+    if (!cameraRef.current) return;
 
-      // Capture full-quality image
-      let photo = await cameraRef.current.takePictureAsync({
-        quality: 1,
-        skipProcessing: false,
+    try {
+      const cameraPermission = await Camera.requestCameraPermissionsAsync();
+      const micPermission = await Camera.requestMicrophonePermissionsAsync();
+
+      if (!cameraPermission.granted || !micPermission.granted) {
+        Alert.alert("Permission required", "Camera and microphone permissions are needed.");
+        return;
+      }
+
+      setRecording(true);
+      setRecordingTime(0);
+
+      let recordingStarted = false;
+
+      // Start recording
+      const recordPromise = cameraRef.current.recordAsync({
+        quality: "720p",
       });
 
-      uploadImage(photo.uri);
-    } catch (error) {
-      alert(error.message || "Failed to capture image.");
-      setScanned(false);
+      // Wait 300–500ms to ensure recording is initialized before we schedule the stop
+      setTimeout(() => {
+        recordingStarted = true;
+      }, 500);
+
+      // Auto stop after 10s (but only if recording actually started)
+      const timeout = setTimeout(() => {
+        if (recordingStarted && cameraRef.current) {
+          cameraRef.current.stopRecording();
+        }
+      }, 10500); // small buffer, since init takes ~500ms
+
+      const video = await recordPromise;
+
+      clearTimeout(timeout);
+
+      if (video?.uri) {
+        setVideoUri(video.uri);
+        setShowPreview(true);
+      } else {
+        Alert.alert("Error", "No video was recorded. Try again.");
+      }
+    } catch (err) {
+      console.error("Record error:", err);
+      Alert.alert("Error", err.message || "Failed to record video. Try again.");
+    } finally {
+      setRecording(false);
+    }
+  };
+
+  const handleStopRecording = async () => {
+    try {
+      if (cameraRef.current && recording) {
+        setRecording(false);
+        await cameraRef.current.stopRecording();
+      }
+    } catch (err) {
+      console.warn("Stop recording error:", err.message);
     }
   };
 
   // --- UPLOAD TO AI (NEW MULTIMODEL ENDPOINT) ---
-  const uploadImage = async (uri) => {
+  const uploadVideo = async (uri) => {
     setIsUploading(true);
+    setShowPreview(false);
+
     try {
       const formData = new FormData();
-      formData.append("image", {
+      formData.append("video", {
         uri: uri.startsWith("file://") ? uri : `file://${uri}`,
-        name: "scan.jpg",
-        type: "application/octet-stream",
+        name: "tank_scan.mp4",
+        type: "video/mp4",
       });
-      formData.append("type", scanType);
 
-      const response = await fetch(`${baseUrl}/ai-model/inference/multimodel/`, {
+      const response = await fetch("https://api.aquaai.uk/api/v1/ai-model/species-track/", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -70,10 +143,12 @@ const TankScanScreen = () => {
 
       const result = await response.json();
       console.log(result);
-      if (!response.ok) throw new Error(result.detail || "Upload failed");
 
-      // --- NEW STRUCTURE ---
-      const predictions = result?.data?.predictions || [];
+      if (!response.ok) throw new Error(result.detail || "Video upload failed");
+
+      // Map predictions same as before
+      const predictions = result?.species || [];
+      console.log("predictions", predictions);
       const mappedData = predictions.map((pred) => ({
         class_name: pred.class_name || "Unknown",
         confidence: pred.confidence || 0,
@@ -89,15 +164,15 @@ const TankScanScreen = () => {
         quantity: "1",
         notes: "",
       }));
+      console.log("mappeddata", mappedData);
 
       setScanData(mappedData);
       sheetRef.current.open();
     } catch (error) {
-      alert(error.message);
-      setScanned(false);
+      Alert.alert("Error", error.message);
+      console.error(error);
     } finally {
       setIsUploading(false);
-      setScanned(false);
     }
   };
 
@@ -136,6 +211,7 @@ const TankScanScreen = () => {
       await activateTank(tankDataLocal.id);
       navigation.navigate("TankAddWaterParams", {
         origin: "TankScan",
+        tankData: tankDataLocal,
       });
     } catch (error) {
       Alert.alert("Error", error.message);
@@ -242,10 +318,38 @@ const TankScanScreen = () => {
       </View>
     );
   };
+  if (showPreview && videoUri) {
+    return (
+      <View style={styles.previewContainer}>
+        <Text style={styles.previewTitle}>Preview Video</Text>
+
+        <Video style={styles.previewVideo} source={{ uri: videoUri }} useNativeControls resizeMode="contain" shouldPlay />
+
+        <View style={styles.previewButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.previewButton, { backgroundColor: "#e74c3c" }]}
+            onPress={() => {
+              setShowPreview(false);
+              setVideoUri(null);
+            }}
+          >
+            <Icon name="refresh" size={20} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.previewButtonText}>Retake</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.previewButton, { backgroundColor: "#2ecc71" }]} onPress={() => uploadVideo(videoUri)}>
+            <Icon name="upload" size={20} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.previewButtonText}>Confirm & Upload</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing={facing} ref={cameraRef} zoom={zoom} />
+      <CameraView mode="video" facing={facing} ref={cameraRef} style={styles.camera} zoom={zoom} />
+
       <View style={styles.zoomVerticalContainer}>
         <TouchableOpacity style={styles.zoomButton} onPress={() => setZoom(Math.min(1, zoom + 0.1))}>
           <Icon name="plus" size={20} color="#fff" />
@@ -274,9 +378,17 @@ const TankScanScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={handleScan}>
-            <Text style={styles.buttonText}>Scan Tank</Text>
-          </TouchableOpacity>
+          {recording && <Text style={{ color: "#fff", fontSize: 18, marginBottom: 8 }}>{recordingTime}s</Text>}
+
+          {!recording ? (
+            <TouchableOpacity style={styles.button} onPress={handleRecordVideo}>
+              <Text style={styles.buttonText}>Record Video (10s)</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={[styles.button, { backgroundColor: "#e74c3c" }]} onPress={handleStopRecording}>
+              <Text style={styles.buttonText}>Stop Recording</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.flipButton} onPress={() => setFacing((prev) => (prev === "back" ? "front" : "back"))}>
             <Text style={styles.flipText}>Flip</Text>
@@ -307,6 +419,7 @@ const TankScanScreen = () => {
 
         <ScrollView>
           <Text style={styles.modalTitle}>Review & Add Species</Text>
+          {console.log("scanData", scanData)}
           {scanData.map((fish, index) => renderFishCard(fish, index))}
           {scanData.length > 0 && (
             <TouchableOpacity style={[styles.button, { marginTop: 20 }]} onPress={handleSubmit}>
@@ -526,5 +639,44 @@ const styles = StyleSheet.create({
     backgroundColor: "#2cd4c8",
     position: "absolute",
     bottom: 0,
+  },
+  previewContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  previewTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  previewVideo: {
+    width: "100%",
+    height: 400,
+    borderRadius: 12,
+  },
+  previewButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 30,
+    paddingHorizontal: 10,
+  },
+  previewButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    marginHorizontal: 6,
+  },
+  previewButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

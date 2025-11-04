@@ -82,8 +82,9 @@ const PhScanScreen = () => {
       }
 
       // set values and show modal
-      setScanResult(result);
-      setPhScale(result.estimated_ph || 3.5);
+      console.log("result", result);
+      setScanResult(result.data);
+      setPhScale(result.data.estimated_ph || 3.5);
       setModalVisible(true);
     } catch (error) {
       console.error(error);
@@ -225,6 +226,7 @@ const PhScanScreen = () => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Water Test Results</Text>
 
+            {console.log("scanResult", scanResult)}
             {scanResult && (
               <View style={styles.resultBox}>
                 <View style={styles.resultRow}>

@@ -1,7 +1,18 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
+import { useState, useContext, useEffect } from "react";
+
+import { AuthContext } from "../authcontext";
 
 const FirstScreen = ({ navigation }) => {
+  const { token, login, loading } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!loading && token) {
+      navigation.replace("tankSetup");
+    }
+  }, [loading, token, navigation]);
+
   return (
     <View style={styles.container}>
       {/* Logo at the top */}

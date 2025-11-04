@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function TankAddWaterParams({ navigation }) {
   const { token, activateTank, activeTankId } = useContext(AuthContext);
   const route = useRoute();
-  const { origin } = route.params;
+  const { origin, tankData } = route.params;
 
   const [activeForm, setActiveForm] = useState("tank"); // "tank" | "water"
 
@@ -21,6 +21,14 @@ export default function TankAddWaterParams({ navigation }) {
   const [nitrate, setNitrate] = useState(String(""));
   const [ammonia, setAmmonia] = useState(String(""));
   const [ph, setPh] = useState(String(""));
+  const [waterType, setWaterType] = useState(tankData?.tank_type || "");
+
+  // New saltwater parameters
+  const [magnesium, setMagnesium] = useState(String(tankData?.waterParams?.magnesium_mgL ?? ""));
+  const [alkalinity, setAlkalinity] = useState(String(tankData?.waterParams?.alkalinity_dkh ?? ""));
+  const [calcium, setCalcium] = useState(String(tankData?.waterParams?.calcium_mgL ?? ""));
+  const [phosphate, setPhosphate] = useState(String(tankData?.waterParams?.phosphate_ppm ?? ""));
+  console.log("tankData", tankData);
 
   const updateWaterParams = async () => {
     try {
@@ -37,6 +45,11 @@ export default function TankAddWaterParams({ navigation }) {
           estimated_nitrate_ppm: parseFloat(nitrate),
           estimated_ammonia_ppm: parseFloat(ammonia),
           estimated_ph: parseFloat(ph), // NEW
+          // Saltwater-specific fields
+          magnesium_mgL: tankType === "SALT" ? parseFloat(magnesium) : null,
+          alkalinity_dkh: tankType === "SALT" ? parseFloat(alkalinity) : null,
+          calcium_mgL: tankType === "SALT" ? parseFloat(calcium) : null,
+          phosphate_ppm: tankType === "SALT" ? parseFloat(phosphate) : null,
         }),
       });
 
@@ -115,6 +128,16 @@ export default function TankAddWaterParams({ navigation }) {
         {renderInput("Nitrate (ppm)", nitrate, setNitrate, "Enter nitrate")}
         {renderInput("Ammonia (ppm)", ammonia, setAmmonia, "Enter ammonia")}
         {renderInput("pH", ph, setPh, "Enter pH")}
+
+        {tankType === "SALT" && (
+          <>
+            <Text style={{ fontSize: 16, fontWeight: "700", marginTop: 20, marginBottom: 10 }}>Saltwater Parameters</Text>
+            {renderInput("Magnesium (mg/L)", magnesium, setMagnesium, "Enter magnesium")}
+            {renderInput("Alkalinity (dKH)", alkalinity, setAlkalinity, "Enter alkalinity")}
+            {renderInput("Calcium (mg/L)", calcium, setCalcium, "Enter calcium")}
+            {renderInput("Phosphate (ppm)", phosphate, setPhosphate, "Enter phosphate")}
+          </>
+        )}
 
         {/* Conditionally render update button */}
         {hasValues && (

@@ -112,7 +112,7 @@ const TankSetupScreen = ({ navigation }) => {
 
       if (response.ok) {
         navigation.navigate("TankScan", {
-          tankDataLocal: { name: tankName, id: data?.data?.id },
+          tankDataLocal: { name: tankName, id: data?.data?.id, tank_type: tankType.toUpperCase() === "FRESHWATER" ? "FRESH" : "SALT" },
         });
       } else {
         const message = data?.dev_msg?.name?.[0] || data?.message || "Something went wrong. Please try again.";
