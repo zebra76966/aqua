@@ -46,10 +46,10 @@ export default function TankAddWaterParams({ navigation }) {
           estimated_ammonia_ppm: parseFloat(ammonia),
           estimated_ph: parseFloat(ph), // NEW
           // Saltwater-specific fields
-          magnesium_mgL: tankType === "SALT" ? parseFloat(magnesium) : null,
-          alkalinity_dkh: tankType === "SALT" ? parseFloat(alkalinity) : null,
-          calcium_mgL: tankType === "SALT" ? parseFloat(calcium) : null,
-          phosphate_ppm: tankType === "SALT" ? parseFloat(phosphate) : null,
+          magnesium_mgL: waterType === "SALT" ? parseFloat(magnesium) : null,
+          alkalinity_dkh: waterType === "SALT" ? parseFloat(alkalinity) : null,
+          calcium_mgL: waterType === "SALT" ? parseFloat(calcium) : null,
+          phosphate_ppm: waterType === "SALT" ? parseFloat(phosphate) : null,
         }),
       });
 
@@ -80,7 +80,7 @@ export default function TankAddWaterParams({ navigation }) {
     );
 
     return (
-      <ScrollView>
+      <ScrollView style={{ marginBottom: 80 }}>
         {/* Scan button */}
         <TouchableOpacity
           style={{
@@ -129,7 +129,7 @@ export default function TankAddWaterParams({ navigation }) {
         {renderInput("Ammonia (ppm)", ammonia, setAmmonia, "Enter ammonia")}
         {renderInput("pH", ph, setPh, "Enter pH")}
 
-        {tankType === "SALT" && (
+        {waterType === "SALT" && (
           <>
             <Text style={{ fontSize: 16, fontWeight: "700", marginTop: 20, marginBottom: 10 }}>Saltwater Parameters</Text>
             {renderInput("Magnesium (mg/L)", magnesium, setMagnesium, "Enter magnesium")}

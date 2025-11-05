@@ -15,7 +15,9 @@ import * as ImageManipulator from "expo-image-manipulator";
 const TankScanScreen = () => {
   const { token, logout, activeTankId, activateTank } = useContext(AuthContext);
   const route = useRoute();
+
   const { tankDataLocal } = route.params;
+
   const [facing, setFacing] = useState("back");
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -79,6 +81,7 @@ const TankScanScreen = () => {
       // Start recording
       const recordPromise = cameraRef.current.recordAsync({
         quality: "720p",
+        mute: true,
       });
 
       // Wait 300–500ms to ensure recording is initialized before we schedule the stop
@@ -209,6 +212,7 @@ const TankScanScreen = () => {
       sheetRef.current.close();
 
       await activateTank(tankDataLocal.id);
+      console.log("tankDataLocal", tankDataLocal);
       navigation.navigate("TankAddWaterParams", {
         origin: "TankScan",
         tankData: tankDataLocal,
@@ -339,7 +343,7 @@ const TankScanScreen = () => {
 
           <TouchableOpacity style={[styles.previewButton, { backgroundColor: "#2ecc71" }]} onPress={() => uploadVideo(videoUri)}>
             <Icon name="upload" size={20} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.previewButtonText}>Confirm & Upload</Text>
+            <Text style={styles.previewButtonText}> Upload</Text>
           </TouchableOpacity>
         </View>
       </View>

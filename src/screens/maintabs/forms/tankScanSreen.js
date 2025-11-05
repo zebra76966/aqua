@@ -339,7 +339,7 @@ const TankScanScreenTabs = () => {
 
           <TouchableOpacity style={[styles.previewButton, { backgroundColor: "#2ecc71" }]} onPress={() => uploadVideo(videoUri)}>
             <Icon name="upload" size={20} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.previewButtonText}>Confirm & Upload</Text>
+            <Text style={styles.previewButtonText}>Upload</Text>
           </TouchableOpacity>
         </View>
       </View>
