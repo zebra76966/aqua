@@ -165,7 +165,7 @@ const TankScanScreenTabs = () => {
       console.log("mappeddata", mappedData);
 
       setScanData(mappedData);
-      sheetRef.current.open();
+      setTimeout(() => sheetRef.current?.open?.(), 100);
     } catch (error) {
       Alert.alert("Error", error.message);
       console.error(error);
@@ -225,38 +225,64 @@ const TankScanScreenTabs = () => {
   };
 
   // --- RENDER FISH FORM ---
-  const renderFishCard = (fish, index) => {
+  const FishCard = ({ fish, index, handleRemove, updateField, getConfidenceColor }) => {
+    const [editing, setEditing] = useState(false);
+    const [imageLoaded, setImageLoaded] = useState(true);
+
     return (
       <View key={index} style={styles.card}>
-        {fish.image_url && (
-          <View style={styles.imageContainer}>
-            <Image source={{ uri: fish.image_url }} style={styles.fishImage} resizeMode="cover" />
+        <View style={styles.imageContainer}>
+          <Image
+            source={imageLoaded && fish.image_url ? { uri: fish.image_url } : require("../../../assets/placeholder-fish.png")}
+            style={styles.fishImage}
+            resizeMode="cover"
+            onError={() => setImageLoaded(false)}
+          />
 
-            {/* Confidence Badge */}
-            <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(fish.confidence) }]}>
-              <Icon name="shield-check" size={16} color="#fff" style={{ marginRight: 4 }} />
-              <Text style={styles.confidenceText}>{(fish.confidence * 100).toFixed(1)}%</Text>
-            </View>
+          {/* Overlay info */}
+          <View style={styles.overlayInfo}>
+            <Text style={styles.overlayText} numberOfLines={1}>
+              {fish.metadata.species_name || "Unknown"}
+            </Text>
+            <Text style={styles.overlaySubText} numberOfLines={1}>
+              {fish.metadata.species_Nomenclature || ""}
+            </Text>
+            <Text style={styles.overlayQty}>Qty: {fish.quantity || "1"}</Text>
+          </View>
+
+          {/* Confidence Badge */}
+          <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(fish.confidence) }]}>
+            <Icon name="shield-check" size={16} color="#fff" style={{ marginRight: 4 }} />
+            <Text style={styles.confidenceText}>{(fish.confidence * 100).toFixed(1)}%</Text>
+          </View>
+
+          {/* Action buttons */}
+          <View style={styles.imageActions}>
+            <TouchableOpacity style={styles.iconButtonSmall} onPress={() => setEditing(!editing)}>
+              <Icon name={editing ? "check" : "pencil"} size={20} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.iconButtonSmall, { backgroundColor: "#ff4d4d" }]} onPress={() => handleRemove(index)}>
+              <Icon name="delete" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Editable fields */}
+        {editing && (
+          <View style={styles.editSection}>
+            <Text style={styles.label}>Species Name</Text>
+            <TextInput style={styles.input} value={fish.metadata.species_name} onChangeText={(t) => updateField(index, "metadata.species_name", t)} />
+
+            <Text style={styles.label}>Scientific Name</Text>
+            <TextInput style={styles.input} value={fish.metadata.species_Nomenclature} onChangeText={(t) => updateField(index, "metadata.species_Nomenclature", t)} />
+
+            <Text style={styles.label}>Quantity</Text>
+            <TextInput style={styles.input} keyboardType="numeric" value={fish.quantity} onChangeText={(t) => updateField(index, "quantity", t)} />
+
+            <Text style={styles.label}>Notes</Text>
+            <TextInput style={styles.input} value={fish.notes} onChangeText={(t) => updateField(index, "notes", t)} />
           </View>
         )}
-
-        <Text style={styles.label}>Species Name</Text>
-        <TextInput style={styles.input} value={fish.metadata.species_name} onChangeText={(t) => updateField(index, "metadata.species_name", t)} />
-
-        <Text style={styles.label}>Scientific Name</Text>
-        <TextInput style={styles.input} value={fish.metadata.species_Nomenclature} onChangeText={(t) => updateField(index, "metadata.species_Nomenclature", t)} />
-
-        <Text style={styles.label}>Quantity</Text>
-        <TextInput style={styles.input} keyboardType="numeric" value={fish.quantity} onChangeText={(t) => updateField(index, "quantity", t)} />
-
-        <Text style={styles.label}>Notes</Text>
-        <TextInput style={styles.input} value={fish.notes} onChangeText={(t) => updateField(index, "notes", t)} />
-
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={() => handleRemove(index)}>
-            <Icon name="delete" size={25} color="red" />
-          </TouchableOpacity>
-        </View>
       </View>
     );
   };
@@ -401,13 +427,14 @@ const TankScanScreenTabs = () => {
         ref={sheetRef}
         closeOnDragDown
         closeOnPressMask
-        height={600}
+        height={800}
         customStyles={{
           wrapper: { backgroundColor: "rgba(0,0,0,0.5)" },
           container: {
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             padding: 15,
+            position: "relative",
           },
           draggableIcon: { backgroundColor: "#ccc" },
         }}
@@ -417,15 +444,29 @@ const TankScanScreenTabs = () => {
           <Icon name="close" size={26} color="#ffffffff" />
         </TouchableOpacity>
 
-        <ScrollView>
+        <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
           <Text style={styles.modalTitle}>Review & Add Species</Text>
-          {scanData.map((fish, index) => renderFishCard(fish, index))}
-          {scanData.length > 0 && (
-            <TouchableOpacity style={[styles.button, { marginTop: 20 }]} onPress={handleSubmit}>
-              <Text style={styles.buttonText}>Confirm & Save</Text>
-            </TouchableOpacity>
-          )}
+          {scanData.map((fish, index) => (
+            <FishCard key={index} fish={fish} index={index} handleRemove={handleRemove} updateField={updateField} getConfidenceColor={getConfidenceColor} />
+          ))}
         </ScrollView>
+        {scanData.length > 0 && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              {
+                position: "absolute",
+                bottom: 15,
+                left: 15,
+                right: 15,
+                borderRadius: 10,
+              },
+            ]}
+            onPress={handleSubmit}
+          >
+            <Text style={styles.buttonText}>Confirm & Save</Text>
+          </TouchableOpacity>
+        )}
       </RBSheet>
     </View>
   );
@@ -682,5 +723,50 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  overlayInfo: {
+    position: "absolute",
+    left: 10,
+    bottom: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    maxWidth: "65%",
+  },
+  overlayText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  overlaySubText: {
+    color: "#ddd",
+    fontSize: 12,
+    marginTop: 2,
+    fontStyle: "italic",
+  },
+  overlayQty: {
+    color: "#fff",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  imageActions: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+    gap: 8,
+  },
+  iconButtonSmall: {
+    backgroundColor: "rgba(0,0,0,0.65)",
+    padding: 6,
+    borderRadius: 6,
+  },
+  editSection: {
+    marginTop: 10,
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 8,
+    elevation: 2,
   },
 });
