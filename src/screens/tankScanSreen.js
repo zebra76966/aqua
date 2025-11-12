@@ -4,6 +4,8 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Camera, useCameraPermissions, CameraType, CameraView } from "expo-camera";
 import { AuthContext } from "../authcontext";
 import { baseUrl } from "../config";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // ✅ correct: use Video from expo-av (expo-video causes the "Element type is invalid" issue)
 import { Video } from "expo-av";
@@ -15,6 +17,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 const TankScanScreen = () => {
   const { token, logout, activeTankId, activateTank } = useContext(AuthContext);
   const route = useRoute();
+  const insets = useSafeAreaInsets();
 
   const { tankDataLocal } = route.params;
 
@@ -445,34 +448,42 @@ const TankScanScreen = () => {
           draggableIcon: { backgroundColor: "#ccc" },
         }}
       >
-        {/* Close Button */}
-        <TouchableOpacity style={styles.closeButton} onPress={() => sheetRef.current.close()}>
-          <Icon name="close" size={26} color="#ffffffff" />
-        </TouchableOpacity>
-
-        <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-          <Text style={styles.modalTitle}>Review & Add Species</Text>
-          {scanData.map((fish, index) => (
-            <FishCard key={index} fish={fish} index={index} handleRemove={handleRemove} updateField={updateField} getConfidenceColor={getConfidenceColor} />
-          ))}
-        </ScrollView>
-        {scanData.length > 0 && (
-          <TouchableOpacity
-            style={[
-              styles.button,
-              {
-                position: "absolute",
-                bottom: 15,
-                left: 15,
-                right: 15,
-                borderRadius: 10,
-              },
-            ]}
-            onPress={handleSubmit}
-          >
-            <Text style={styles.buttonText}>Confirm & Save</Text>
+        <SafeAreaView style={{ flex: 1 }}>
+          {/* Close Button */}
+          <TouchableOpacity style={styles.closeButton} onPress={() => sheetRef.current.close()}>
+            <Icon name="close" size={26} color="#ffffffff" />
           </TouchableOpacity>
-        )}
+
+          <ScrollView
+            contentContainerStyle={{
+              paddingBottom: 140 + insets.bottom, // ensures room for the button and safe area
+            }}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.modalTitle}>Review & Add Species</Text>
+            {scanData.map((fish, index) => (
+              <FishCard key={index} fish={fish} index={index} handleRemove={handleRemove} updateField={updateField} getConfidenceColor={getConfidenceColor} />
+            ))}
+          </ScrollView>
+
+          {scanData.length > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.button,
+                {
+                  position: "absolute",
+                  bottom: insets.bottom + 15, // lifts it above the safe area
+                  left: 0,
+                  right: 0,
+                  borderRadius: 10,
+                },
+              ]}
+              onPress={handleSubmit}
+            >
+              <Text style={styles.buttonText}>Confirm & Save</Text>
+            </TouchableOpacity>
+          )}
+        </SafeAreaView>
       </RBSheet>
     </View>
   );
