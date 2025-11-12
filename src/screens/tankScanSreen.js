@@ -18,6 +18,9 @@ const TankScanScreen = () => {
   const { token, logout, activeTankId, activateTank } = useContext(AuthContext);
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  // NEW STATE
+  const [captureMode, setCaptureMode] = useState("video"); // "video" | "image"
+  const [imageUri, setImageUri] = useState(null);
 
   const { tankDataLocal } = route.params;
 
@@ -129,16 +132,68 @@ const TankScanScreen = () => {
   };
 
   // --- UPLOAD TO AI (NEW MULTIMODEL ENDPOINT) ---
-  const uploadVideo = async (uri) => {
+  // const uploadVideo = async (uri) => {
+  //   setIsUploading(true);
+  //   setShowPreview(false);
+
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("video", {
+  //       uri: uri.startsWith("file://") ? uri : `file://${uri}`,
+  //       name: "tank_scan.mp4",
+  //       type: "video/mp4",
+  //     });
+
+  //     const response = await fetch("https://api.aquaai.uk/api/v1/ai-model/species-track/", {
+  //       method: "POST",
+  //       headers: { Authorization: `Bearer ${token}` },
+  //       body: formData,
+  //     });
+
+  //     const result = await response.json();
+  //     console.log(result);
+
+  //     if (!response.ok) throw new Error(result.detail || "Video upload failed");
+
+  //     // Map predictions same as before
+  //     const predictions = result?.species || [];
+  //     console.log("predictions", predictions);
+  //     const mappedData = predictions.map((pred) => ({
+  //       class_name: pred.class_name || "Unknown",
+  //       confidence: pred.confidence || 0,
+  //       metadata: {
+  //         species_name: pred.metadata?.species_name || pred.species?.name || "Unknown Species",
+  //         species_Nomenclature: pred.metadata?.species_Nomenclature || pred.species?.scientific_name || "",
+  //         max_size_cm: pred.metadata?.max_size_cm || pred.metadata?.maximum_size || "",
+  //         summary: pred.metadata?.summary || "",
+  //         distribution: pred.metadata?.distribution || "",
+  //         category: pred.species?.category || "",
+  //       },
+  //       image_url: pred.metadata?.image_url || result?.data?.image_url || null,
+  //       quantity: "1",
+  //       notes: "",
+  //     }));
+  //     console.log("mappeddata", mappedData);
+
+  //     setScanData(mappedData);
+  //     setTimeout(() => sheetRef.current?.open?.(), 100);
+  //   } catch (error) {
+  //     Alert.alert("Error", error.message);
+  //     console.error(error);
+  //   } finally {
+  //     setIsUploading(false);
+  //   }
+  // };
+  const uploadMedia = async (uri, type = "video") => {
     setIsUploading(true);
     setShowPreview(false);
 
     try {
       const formData = new FormData();
-      formData.append("video", {
+      formData.append(type, {
         uri: uri.startsWith("file://") ? uri : `file://${uri}`,
-        name: "tank_scan.mp4",
-        type: "video/mp4",
+        name: type === "video" ? "tank_scan.mp4" : "tank_scan.jpg",
+        type: type === "video" ? "video/mp4" : "image/jpeg",
       });
 
       const response = await fetch("https://api.aquaai.uk/api/v1/ai-model/species-track/", {
@@ -148,13 +203,9 @@ const TankScanScreen = () => {
       });
 
       const result = await response.json();
-      console.log(result);
-
-      if (!response.ok) throw new Error(result.detail || "Video upload failed");
-
-      // Map predictions same as before
+      if (!response.ok) throw new Error(result.detail || `${type} upload failed`);
+      // (keep your mapping code the same)
       const predictions = result?.species || [];
-      console.log("predictions", predictions);
       const mappedData = predictions.map((pred) => ({
         class_name: pred.class_name || "Unknown",
         confidence: pred.confidence || 0,
@@ -170,13 +221,10 @@ const TankScanScreen = () => {
         quantity: "1",
         notes: "",
       }));
-      console.log("mappeddata", mappedData);
-
       setScanData(mappedData);
       setTimeout(() => sheetRef.current?.open?.(), 100);
     } catch (error) {
       Alert.alert("Error", error.message);
-      console.error(error);
     } finally {
       setIsUploading(false);
     }
@@ -232,6 +280,31 @@ const TankScanScreen = () => {
     if (value > 0.6) return "rgba(241,196,15,0.9)";
     return "rgba(231,76,60,0.9)";
   };
+
+  const handleTakePicture = async () => {
+    if (!cameraRef.current) return;
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: false,
+      });
+      if (photo?.uri) {
+        setImageUri(photo.uri);
+        setShowPreview(true);
+      } else {
+        Alert.alert("Error", "No image captured. Try again.");
+      }
+    } catch (err) {
+      Alert.alert("Error", err.message || "Failed to take picture.");
+    }
+  };
+
+  const [readyToShow, setReadyToShow] = useState(true);
+  useEffect(() => {
+    setReadyToShow(false);
+    const t = setTimeout(() => setReadyToShow(true), 250); // short delay for unmount/remount
+    return () => clearTimeout(t);
+  }, [captureMode, facing]);
 
   // --- RENDER FISH FORM ---
   const FishCard = ({ fish, index, handleRemove, updateField, getConfidenceColor }) => {
@@ -353,12 +426,17 @@ const TankScanScreen = () => {
       </View>
     );
   };
-  if (showPreview && videoUri) {
+  if (showPreview && (videoUri || imageUri)) {
+    const isVideo = !!videoUri;
     return (
       <View style={styles.previewContainer}>
-        <Text style={styles.previewTitle}>Preview Video</Text>
+        <Text style={styles.previewTitle}>{isVideo ? "Preview Video" : "Preview Image"}</Text>
 
-        <Video style={styles.previewVideo} source={{ uri: videoUri }} useNativeControls resizeMode="contain" shouldPlay />
+        {isVideo ? (
+          <Video style={styles.previewVideo} source={{ uri: videoUri }} useNativeControls resizeMode="contain" shouldPlay />
+        ) : (
+          <Image style={styles.previewVideo} source={{ uri: imageUri }} resizeMode="contain" />
+        )}
 
         <View style={styles.previewButtonsContainer}>
           <TouchableOpacity
@@ -366,15 +444,16 @@ const TankScanScreen = () => {
             onPress={() => {
               setShowPreview(false);
               setVideoUri(null);
+              setImageUri(null);
             }}
           >
             <Icon name="refresh" size={20} color="#fff" style={{ marginRight: 6 }} />
             <Text style={styles.previewButtonText}>Retake</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.previewButton, { backgroundColor: "#2ecc71" }]} onPress={() => uploadVideo(videoUri)}>
+          <TouchableOpacity style={[styles.previewButton, { backgroundColor: "#2ecc71" }]} onPress={() => uploadMedia(isVideo ? videoUri : imageUri, isVideo ? "video" : "image")}>
             <Icon name="upload" size={20} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.previewButtonText}> Upload</Text>
+            <Text style={styles.previewButtonText}>Upload</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -383,7 +462,27 @@ const TankScanScreen = () => {
 
   return (
     <View style={styles.container}>
-      <CameraView mode="video" facing={facing} ref={cameraRef} style={styles.camera} zoom={zoom} />
+      {permission?.granted && readyToShow && (
+        <CameraView
+          key={`${captureMode}-${facing}`} // ensure full remount when mode or facing changes
+          mode={captureMode}
+          facing={facing}
+          ref={cameraRef}
+          style={styles.camera}
+          zoom={zoom}
+          onCameraReady={() => console.log("Camera ready")}
+        />
+      )}
+
+      <View style={styles.captureToggleContainer}>
+        <TouchableOpacity style={[styles.toggleButton, captureMode === "video" && styles.activeToggle]} onPress={() => setCaptureMode("video")}>
+          <Text style={[styles.toggleText, captureMode === "video" && styles.activeText]}>Video</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.toggleButton, captureMode === "image" && styles.activeToggle]} onPress={() => setCaptureMode("image")}>
+          <Text style={[styles.toggleText, captureMode === "image" && styles.activeText]}>Image</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.zoomVerticalContainer}>
         <TouchableOpacity style={styles.zoomButton} onPress={() => setZoom(Math.min(1, zoom + 0.1))}>
@@ -416,9 +515,15 @@ const TankScanScreen = () => {
           {recording && <Text style={{ color: "#fff", fontSize: 18, marginBottom: 8 }}>{recordingTime}s</Text>}
 
           {!recording ? (
-            <TouchableOpacity style={styles.button} onPress={handleRecordVideo}>
-              <Text style={styles.buttonText}>Record Video (10s)</Text>
-            </TouchableOpacity>
+            captureMode === "video" ? (
+              <TouchableOpacity style={styles.button} onPress={handleRecordVideo}>
+                <Text style={styles.buttonText}>Record Video (10s)</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.button} onPress={handleTakePicture}>
+                <Text style={styles.buttonText}>Capture Image</Text>
+              </TouchableOpacity>
+            )
           ) : (
             <TouchableOpacity style={[styles.button, { backgroundColor: "#e74c3c" }]} onPress={handleStopRecording}>
               <Text style={styles.buttonText}>Stop Recording</Text>
@@ -492,6 +597,17 @@ const TankScanScreen = () => {
 export default TankScanScreen;
 
 const styles = StyleSheet.create({
+  captureToggleContainer: {
+    position: "absolute",
+    top: 50,
+    alignSelf: "center",
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 30,
+    zIndex: 20,
+  },
   container: { flex: 1, backgroundColor: "#000" },
   camera: { flex: 1 },
   overlay: {
@@ -780,5 +896,19 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     elevation: 2,
+  },
+  backButton: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    backgroundColor: "#2cd4c8",
+    borderRadius: 25,
+    padding: 8,
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
   },
 });
