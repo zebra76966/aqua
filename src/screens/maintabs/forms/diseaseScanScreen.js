@@ -158,6 +158,10 @@ const DiseaseScanScreen = () => {
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef} zoom={zoom} />
+
+      <TouchableOpacity activeOpacity={0.7} style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Icon name="arrow-left" size={26} color="#fff" />
+      </TouchableOpacity>
       <View style={styles.zoomVerticalContainer}>
         <TouchableOpacity style={styles.zoomButton} onPress={() => setZoom(Math.min(1, zoom + 0.1))}>
           <Icon name="plus" size={20} color="#fff" />
@@ -320,5 +324,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#2cd4c8",
     position: "absolute",
     bottom: 0,
+  },
+  backButton: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    backgroundColor: "#2cd4c8",
+    borderRadius: 25,
+    padding: 8,
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
   },
 });
