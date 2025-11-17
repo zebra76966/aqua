@@ -371,6 +371,18 @@ const TankDetailsScreen = () => {
       </View>
 
       <TouchableOpacity
+        style={[styles.addButton, { bottom: 220, backgroundColor: "#00b7ffff" }]}
+        onPress={() => {
+          navigation.navigate("CompareSpeciesScreen", {
+            tankDataLocal: tank,
+            tankId: tank.id,
+          });
+        }}
+      >
+        <FontAwesome6 name="disease" size={26} color="#fff" />
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={[styles.addButton, { bottom: 180, backgroundColor: "#00b7ffff" }]}
         onPress={() => {
           navigation.navigate("DiseaseScanScreen", {
