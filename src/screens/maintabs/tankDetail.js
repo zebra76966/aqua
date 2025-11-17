@@ -5,6 +5,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../../authcontext";
 import { baseUrl } from "../../config";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 
@@ -371,7 +372,7 @@ const TankDetailsScreen = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.addButton, { bottom: 220, backgroundColor: "#00b7ffff" }]}
+        style={[styles.addButton, { bottom: 220, backgroundColor: "#ee6affff" }]}
         onPress={() => {
           navigation.navigate("CompareSpeciesScreen", {
             tankDataLocal: tank,
@@ -379,11 +380,11 @@ const TankDetailsScreen = () => {
           });
         }}
       >
-        <FontAwesome6 name="disease" size={26} color="#fff" />
+        <MaterialIcons name="compare" size={26} color="#fff" />
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.addButton, { bottom: 180, backgroundColor: "#00b7ffff" }]}
+        style={[styles.addButton, { bottom: 155, backgroundColor: "#00b7ffff" }]}
         onPress={() => {
           navigation.navigate("DiseaseScanScreen", {
             tankDataLocal: tank,
@@ -468,9 +469,9 @@ const TankDetailsScreen = () => {
               </TouchableOpacity>
 
               {/* Form Inputs */}
-              <TextInput placeholder="Class Name" value={className} onChangeText={setClassName} style={styles.input} />
-              <TextInput placeholder="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="numeric" style={styles.input} />
-              <TextInput placeholder="Notes (optional)" value={notes} onChangeText={setNotes} multiline style={[styles.input, { height: 80 }]} />
+              <TextInput placeholder="Class Name" value={className} onChangeText={setClassName} placeholderTextColor="#2cd4c8" style={styles.input} />
+              <TextInput placeholder="Quantity" value={quantity} onChangeText={setQuantity} placeholderTextColor="#2cd4c8" keyboardType="numeric" style={styles.input} />
+              <TextInput placeholder="Notes (optional)" value={notes} onChangeText={setNotes} placeholderTextColor="#2cd4c8" multiline style={[styles.input, { height: 80 }]} />
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity

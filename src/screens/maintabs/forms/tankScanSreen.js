@@ -151,9 +151,11 @@ const TankScanScreenTabs = () => {
       if (!response.ok) throw new Error(result.detail || `${type} upload failed`);
       // (keep your mapping code the same)
       const predictions = result?.species || [];
+
       const mappedData = predictions.map((pred) => ({
         class_name: pred.class_name || "Unknown",
         confidence: pred.confidence || 0,
+        crop_temp_path: pred.crop_temp_path || "",
         metadata: {
           species_name: pred.metadata?.species_name || pred.species?.name || "Unknown Species",
           species_Nomenclature: pred.metadata?.species_Nomenclature || pred.species?.scientific_name || "",
@@ -186,6 +188,7 @@ const TankScanScreenTabs = () => {
           quantity: fish.quantity,
           notes: fish.notes,
           last_scan_image_url: fish.image_url,
+          crop_temp_path: fish.crop_temp_path,
         };
 
         console.log("payload", payload);
