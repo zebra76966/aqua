@@ -318,7 +318,7 @@ const TankDetailsScreen = () => {
                       </Text>
                     </View>
 
-                    {!item.compatibility?.is_compatible && (
+                    {!item?.compatibility?.is_compatible && (
                       <View style={styles.compatibilityContainer}>
                         <AntDesign name="warning" size={20} color="red" style={styles.warningIcon} />
                         <TouchableOpacity style={styles.issuesBtn} onPress={() => showCompatibilityIssues(item)}>
@@ -566,7 +566,7 @@ const TankDetailsScreen = () => {
               {!activeFish?.compatibility?.is_compatible && (
                 <>
                   <Text style={styles.detailsSectionHeader}>Compatibility Issues</Text>
-                  {activeFish.compatibility.issues.map((issue, idx) => (
+                  {activeFish?.compatibility?.issues.map((issue, idx) => (
                     <Text key={idx} style={styles.detailsIssueText}>
                       • {issue}
                     </Text>
