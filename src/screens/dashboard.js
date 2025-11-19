@@ -1,12 +1,56 @@
 import React, { useEffect, useState, useContext, useCallback, useRef } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Animated, Easing } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Animated, Easing, Alert } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { AntDesign, Ionicons, Feather } from "@expo/vector-icons";
 import Svg, { Circle } from "react-native-svg";
 import { AuthContext } from "../authcontext";
 import { baseUrl } from "../config";
+import { Camera, CameraView } from "expo-camera";
+
+import * as ImagePicker from "expo-image-picker";
+import { Linking } from "react-native";
 
 export default function DashboardScreen({ navigation }) {
+  const [permissionsChecked, setPermissionsChecked] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const requestAllPermissions = async () => {
+    try {
+      // Camera
+      const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
+
+      // Microphone
+      const { status: micStatus } = await Camera.requestMicrophonePermissionsAsync();
+
+      // Media Library
+      const mediaReq = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const mediaCheck = await ImagePicker.getMediaLibraryPermissionsAsync();
+      const mediaGranted = mediaReq.status === "granted" || mediaCheck.status === "granted";
+
+      const allGranted = cameraStatus === "granted" && micStatus === "granted" && mediaGranted;
+
+      setPermissionsGranted(allGranted);
+      setPermissionsChecked(true);
+
+      if (!allGranted) {
+        Alert.alert("Permissions Required", "Camera, Microphone and Media access are required for scanning and uploads.", [
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+          { text: "OK" },
+        ]);
+      }
+    } catch (err) {
+      console.log("Permission error:", err);
+    }
+  };
+
+  useEffect(() => {
+    requestAllPermissions();
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      requestAllPermissions();
+    }, [])
+  );
+
   const { token, activeTankId, logout } = useContext(AuthContext);
 
   const [tankData, setTankData] = useState(null);
@@ -215,151 +259,169 @@ export default function DashboardScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
-      {/* Tank Header */}
-      <View style={styles.tankHeader}>
-        <Text style={styles.tankTitle}>{tank_name}</Text>
-        <TouchableOpacity
-          onPress={() =>
-            navigation.navigate("Tanks", {
-              screen: "TankDetail",
-              params: { tankId: activeTankId }, // 👈 send the active tank id
-            })
-          }
-        >
-          <Feather name="settings" size={20} color="black" />
-        </TouchableOpacity>
-      </View>
+    <>
+      {permissionsChecked && !permissionsGranted ? (
+        <View style={styles.permissionGate}>
+          <Feather name="lock" size={60} color="#00CED1" />
+          <Text style={styles.permissionTitle}>Permissions Required</Text>
+          <Text style={styles.permissionDesc}>We need Camera, Microphone and Media permissions to continue.</Text>
 
-      {/* Health Circle */}
-      <View style={styles.healthSection}>
-        <View style={styles.circleWrapper}>
-          <Svg width={circleSize} height={circleSize}>
-            <Circle stroke="#fff" fill="transparent" cx={circleSize / 2} cy={circleSize / 2} r={radius} strokeWidth={strokeWidth} />
-            {overall_health != null && (
-              <AnimatedCircle
-                stroke={getHealthColor()}
-                fill="transparent"
-                cx={circleSize / 2}
-                cy={circleSize / 2}
-                r={radius}
-                strokeWidth={strokeWidth}
-                strokeDasharray={circumference}
-                strokeDashoffset={animatedStroke}
-                strokeLinecap="round"
-                rotation="-90"
-                origin={`${circleSize / 2}, ${circleSize / 2}`}
-              />
+          <TouchableOpacity style={styles.permissionButton} onPress={requestAllPermissions}>
+            <Text style={styles.permissionButtonText}>Grant Permissions</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.permissionButton, { backgroundColor: "#777" }]} onPress={() => Linking.openSettings()}>
+            <Text style={styles.permissionButtonText}>Open App Settings</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
+          {/* Tank Header */}
+          <View style={styles.tankHeader}>
+            <Text style={styles.tankTitle}>{tank_name}</Text>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("Tanks", {
+                  screen: "TankDetail",
+                  params: { tankId: activeTankId }, // 👈 send the active tank id
+                })
+              }
+            >
+              <Feather name="settings" size={20} color="black" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Health Circle */}
+          <View style={styles.healthSection}>
+            <View style={styles.circleWrapper}>
+              <Svg width={circleSize} height={circleSize}>
+                <Circle stroke="#fff" fill="transparent" cx={circleSize / 2} cy={circleSize / 2} r={radius} strokeWidth={strokeWidth} />
+                {overall_health != null && (
+                  <AnimatedCircle
+                    stroke={getHealthColor()}
+                    fill="transparent"
+                    cx={circleSize / 2}
+                    cy={circleSize / 2}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={animatedStroke}
+                    strokeLinecap="round"
+                    rotation="-90"
+                    origin={`${circleSize / 2}, ${circleSize / 2}`}
+                  />
+                )}
+              </Svg>
+              <View style={styles.circleContent}>
+                <Text style={[styles.healthPercent, { color: getHealthColor() }]}>{overall_health != null ? `${overall_health}%` : "-"}</Text>
+                <Text style={styles.healthText}>{overall_health != null ? (overall_health > 70 ? "Healthy" : overall_health > 40 ? "Moderate" : "Poor") : "No Data"}</Text>
+              </View>
+            </View>
+
+            <View style={styles.weekHealthTextBox}>
+              <Text style={styles.weekPercent}>{water_health_score ?? "-"}</Text>
+              <Text style={styles.weekText}>Water Health</Text>
+              <Text style={[styles.weekPercent, { marginTop: 10 }]}>{species_health_score ?? "-"}</Text>
+              <Text style={styles.weekText}>Species Health</Text>
+            </View>
+          </View>
+
+          {/* Water Parameters Card */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Feather name="droplet" size={18} color="#00CED1" />
+              <Text style={styles.cardTitle}>Water Parameters</Text>
+            </View>
+            {water_parameters && Object.keys(water_parameters).length > 0 ? (
+              <>
+                <Text numberOfLines={2} ellipsizeMode="tail" style={styles.cardContent}>
+                  {Object.entries(water_parameters)
+                    .slice(0, 2)
+                    .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
+                    .join(", ")}
+                </Text>
+                <TouchableOpacity onPress={() => setSelectedSection("water")}>
+                  <Text style={styles.viewMore}>View Details</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity onPress={() => navigation.navigate("Tanks")} style={{ marginTop: 8 }}>
+                <Text style={[styles.viewMore, { color: "#FF5722" }]}>View Tanks</Text>
+              </TouchableOpacity>
             )}
-          </Svg>
-          <View style={styles.circleContent}>
-            <Text style={[styles.healthPercent, { color: getHealthColor() }]}>{overall_health != null ? `${overall_health}%` : "-"}</Text>
-            <Text style={styles.healthText}>{overall_health != null ? (overall_health > 70 ? "Healthy" : overall_health > 40 ? "Moderate" : "Poor") : "No Data"}</Text>
           </View>
-        </View>
 
-        <View style={styles.weekHealthTextBox}>
-          <Text style={styles.weekPercent}>{water_health_score ?? "-"}</Text>
-          <Text style={styles.weekText}>Water Health</Text>
-          <Text style={[styles.weekPercent, { marginTop: 10 }]}>{species_health_score ?? "-"}</Text>
-          <Text style={styles.weekText}>Species Health</Text>
-        </View>
-      </View>
-
-      {/* Water Parameters Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Feather name="droplet" size={18} color="#00CED1" />
-          <Text style={styles.cardTitle}>Water Parameters</Text>
-        </View>
-        {water_parameters && Object.keys(water_parameters).length > 0 ? (
-          <>
-            <Text numberOfLines={2} ellipsizeMode="tail" style={styles.cardContent}>
-              {Object.entries(water_parameters)
-                .slice(0, 2)
-                .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
-                .join(", ")}
+          {/* Alerts Card */}
+          <View style={[styles.card, { backgroundColor: "#fff5f5" }]}>
+            <View style={styles.cardHeader}>
+              <Feather name="alert-triangle" size={18} color="#ff4d4d" />
+              <Text style={[styles.cardTitle, { color: "#ff4d4d" }]}>Alerts</Text>
+            </View>
+            <Text numberOfLines={2} style={{ color: "#ff4d4d" }}>
+              {alerts && alerts.length ? alerts.join(", ") : "No alerts! All good 🎉"}
             </Text>
-            <TouchableOpacity onPress={() => setSelectedSection("water")}>
+            <TouchableOpacity onPress={() => setSelectedSection("alerts")}>
               <Text style={styles.viewMore}>View Details</Text>
             </TouchableOpacity>
-          </>
-        ) : (
-          <TouchableOpacity onPress={() => navigation.navigate("Tanks")} style={{ marginTop: 8 }}>
-            <Text style={[styles.viewMore, { color: "#FF5722" }]}>View Tanks</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Alerts Card */}
-      <View style={[styles.card, { backgroundColor: "#fff5f5" }]}>
-        <View style={styles.cardHeader}>
-          <Feather name="alert-triangle" size={18} color="#ff4d4d" />
-          <Text style={[styles.cardTitle, { color: "#ff4d4d" }]}>Alerts</Text>
-        </View>
-        <Text numberOfLines={2} style={{ color: "#ff4d4d" }}>
-          {alerts && alerts.length ? alerts.join(", ") : "No alerts! All good 🎉"}
-        </Text>
-        <TouchableOpacity onPress={() => setSelectedSection("alerts")}>
-          <Text style={styles.viewMore}>View Details</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Species Compatibility Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Ionicons name="fish-outline" size={18} color="#00CED1" />
-          <Text style={styles.cardTitle}>Species Compatibility</Text>
-        </View>
-        {species_compatibility && species_compatibility.length > 0 ? (
-          <>
-            <Text numberOfLines={2} style={styles.cardContent}>
-              {species_compatibility.map((s) => s.species_name).join(", ")}
-            </Text>
-            <TouchableOpacity onPress={() => setSelectedSection("species")}>
-              <Text style={styles.viewMore}>View Details</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <TouchableOpacity onPress={() => navigation.navigate("Tanks")} style={{ marginTop: 8 }}>
-            <Text style={[styles.viewMore, { color: "#FF5722" }]}>View Tanks</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Quick Add Log */}
-      <TouchableOpacity style={styles.quickAddLog} onPress={() => setShowWorkInProgress(true)}>
-        <Text style={styles.quickAddText}>QUICK ADD LOG</Text>
-        <AntDesign name="pluscircle" size={20} color="white" style={{ marginLeft: 8 }} />
-      </TouchableOpacity>
-
-      {/* Modal */}
-      <Modal animationType="slide" transparent visible={!!selectedSection} onRequestClose={() => setSelectedSection(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            {renderModalContent()}
-            <TouchableOpacity onPress={() => setSelectedSection(null)} style={styles.closeButton}>
-              <Text style={{ color: "white", fontWeight: "bold" }}>CLOSE</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
 
-      {/* Work in Progress Modal */}
-      <Modal visible={showWorkInProgress} transparent animationType="fade" onRequestClose={() => setShowWorkInProgress(false)}>
-        <View style={styles.wipOverlay}>
-          <Animated.View style={styles.wipContainer}>
-            <Feather name="tool" size={50} color="#00CED1" style={{ marginBottom: 16 }} />
-            <Text style={styles.wipTitle}>Feature Under Progress</Text>
-            <Text style={styles.wipText}>We’re working on this feature. It’ll be available soon 🚀</Text>
+          {/* Species Compatibility Card */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="fish-outline" size={18} color="#00CED1" />
+              <Text style={styles.cardTitle}>Species Compatibility</Text>
+            </View>
+            {species_compatibility && species_compatibility.length > 0 ? (
+              <>
+                <Text numberOfLines={2} style={styles.cardContent}>
+                  {species_compatibility.map((s) => s.species_name).join(", ")}
+                </Text>
+                <TouchableOpacity onPress={() => setSelectedSection("species")}>
+                  <Text style={styles.viewMore}>View Details</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity onPress={() => navigation.navigate("Tanks")} style={{ marginTop: 8 }}>
+                <Text style={[styles.viewMore, { color: "#FF5722" }]}>View Tanks</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
-            <TouchableOpacity onPress={() => setShowWorkInProgress(false)} style={styles.wipCloseBtn}>
-              <Text style={{ color: "white", fontWeight: "bold" }}>OKAY</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Modal>
-    </ScrollView>
+          {/* Quick Add Log */}
+          <TouchableOpacity style={styles.quickAddLog} onPress={() => setShowWorkInProgress(true)}>
+            <Text style={styles.quickAddText}>QUICK ADD LOG</Text>
+            <AntDesign name="pluscircle" size={20} color="white" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+
+          {/* Modal */}
+          <Modal animationType="slide" transparent visible={!!selectedSection} onRequestClose={() => setSelectedSection(null)}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                {renderModalContent()}
+                <TouchableOpacity onPress={() => setSelectedSection(null)} style={styles.closeButton}>
+                  <Text style={{ color: "white", fontWeight: "bold" }}>CLOSE</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Work in Progress Modal */}
+          <Modal visible={showWorkInProgress} transparent animationType="fade" onRequestClose={() => setShowWorkInProgress(false)}>
+            <View style={styles.wipOverlay}>
+              <Animated.View style={styles.wipContainer}>
+                <Feather name="tool" size={50} color="#00CED1" style={{ marginBottom: 16 }} />
+                <Text style={styles.wipTitle}>Feature Under Progress</Text>
+                <Text style={styles.wipText}>We’re working on this feature. It’ll be available soon 🚀</Text>
+
+                <TouchableOpacity onPress={() => setShowWorkInProgress(false)} style={styles.wipCloseBtn}>
+                  <Text style={{ color: "white", fontWeight: "bold" }}>OKAY</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
+          </Modal>
+        </ScrollView>
+      )}
+    </>
   );
 }
 
@@ -453,5 +515,42 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 30,
     borderRadius: 25,
+  },
+  permissionGate: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 25,
+    backgroundColor: "#F8F8F8",
+  },
+
+  permissionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginTop: 20,
+    color: "#000",
+  },
+
+  permissionDesc: {
+    marginTop: 10,
+    fontSize: 15,
+    textAlign: "center",
+    color: "#444",
+    marginBottom: 30,
+  },
+
+  permissionButton: {
+    width: "80%",
+    backgroundColor: "#00CED1",
+    paddingVertical: 14,
+    borderRadius: 30,
+    alignItems: "center",
+    marginVertical: 8,
+  },
+
+  permissionButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });

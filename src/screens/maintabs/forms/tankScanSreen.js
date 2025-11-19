@@ -11,6 +11,7 @@ import RBSheet from "react-native-raw-bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as ImagePicker from "expo-image-picker";
 
 const TankScanScreenTabs = () => {
   const insets = useSafeAreaInsets();
@@ -332,6 +333,40 @@ const TankScanScreenTabs = () => {
     setScanData(updated);
   };
 
+  const handlePickFromGallery = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission required", "Gallery access is needed.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All, // both images & videos
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+
+      if (!asset) return;
+
+      // Detect whether it's image or video
+      if (asset.type === "video") {
+        setVideoUri(asset.uri);
+        setShowPreview(true);
+      } else {
+        setImageUri(asset.uri);
+        setShowPreview(true);
+      }
+    } catch (err) {
+      Alert.alert("Error", err.message || "Failed to pick media.");
+    }
+  };
+
   // --- CAMERA PERMISSION ---
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -423,6 +458,10 @@ const TankScanScreenTabs = () => {
 
       <TouchableOpacity activeOpacity={0.7} style={styles.backButton} onPress={() => navigation.goBack()}>
         <Icon name="arrow-left" size={26} color="#fff" />
+      </TouchableOpacity>
+
+      <TouchableOpacity activeOpacity={0.8} style={styles.galleryButton} onPress={handlePickFromGallery}>
+        <Icon name="image-multiple" size={26} color="#fff" />
       </TouchableOpacity>
 
       <View style={styles.captureToggleContainer}>
@@ -861,6 +900,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#2cd4c8",
     borderRadius: 25,
     padding: 8,
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  galleryButton: {
+    position: "absolute",
+    top: 120,
+    left: 20,
+    backgroundColor: "rgba(44, 212, 200, 0.5)",
+    borderColor: "#2cd4c8",
+    borderWidth: 1,
+    padding: 10,
+    borderRadius: 25,
     zIndex: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

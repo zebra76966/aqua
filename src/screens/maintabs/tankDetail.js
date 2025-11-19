@@ -61,6 +61,8 @@ const TankDetailsScreen = () => {
       });
       const speciesJson = await speciesRes.json();
 
+      console.log("Fetched species data:", speciesJson.species[0]);
+
       // Fetch compatibility for each species
       const speciesWithCompatibility = await Promise.all(
         speciesJson.species.map(async (item) => {
@@ -165,6 +167,8 @@ const TankDetailsScreen = () => {
     // Add more conditions for other types of issues if needed
     return <AntDesign name="exclamationcircleo" size={20} color="#ff8c00" />; // Default icon
   };
+  const [fishModalVisible, setFishModalVisible] = useState(false);
+  const [activeFish, setActiveFish] = useState(null);
 
   if (loading) {
     return (
@@ -276,49 +280,57 @@ const TankDetailsScreen = () => {
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
             <View style={styles.speciesCard}>
-              {/* Image */}
-              <Image source={{ uri: item.last_scan_image_url }} style={styles.speciesImage} />
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setActiveFish(item);
+                  setFishModalVisible(true);
+                }}
+              >
+                {/* ALL existing image + text content EXCEPT delete button */}
+                <View style={{ flexDirection: "row" }}>
+                  <Image source={{ uri: item?.last_scan_image_url || item?.metadata?.image_url }} style={styles.speciesImage} />
 
-              {/* Content Wrapper */}
-              <View style={styles.speciesContent}>
-                <Text style={styles.speciesName}>{item.metadata.species_name}</Text>
-                <Text style={styles.speciesScientific}>{item.metadata.species_Nomenclature}</Text>
+                  <View style={styles.speciesContent}>
+                    <Text style={styles.speciesName}>{item.metadata.species_name}</Text>
+                    <Text style={styles.speciesScientific}>{item.metadata.species_Nomenclature}</Text>
 
-                {/* Info rows with icons */}
-                <View style={styles.infoRow}>
-                  <MaterialCommunityIcons name="jellyfish-outline" size={16} color="#00CED1" />
-                  <Text style={styles.speciesDetail}>{item.quantity} fish</Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <MaterialCommunityIcons name="jellyfish-outline" size={16} color="#00CED1" />
+                      <Text style={styles.speciesDetail}>{item.quantity} fish</Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Feather name="maximize" size={16} color="#ff8c00" />
-                  <Text style={styles.speciesDetail}>Max Size: {item.metadata.maximum_size}</Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <Feather name="maximize" size={16} color="#ff8c00" />
+                      <Text style={styles.speciesDetail}>Max Size: {item.metadata.maximum_size}</Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Feather name="thermometer" size={16} color="#e63946" />
-                  <Text style={styles.speciesDetail}>Temp: {item.metadata.temperature}</Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <Feather name="thermometer" size={16} color="#e63946" />
+                      <Text style={styles.speciesDetail}>Temp: {item.metadata.temperature}</Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Feather name="droplet" size={16} color="#1d3557" />
-                  <Text style={styles.speciesDetail}>
-                    pH: {item.metadata.ideal_ph_min} - {item.metadata.ideal_ph_max}
-                  </Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <Feather name="droplet" size={16} color="#1d3557" />
+                      <Text style={styles.speciesDetail}>
+                        pH: {item.metadata.ideal_ph_min} - {item.metadata.ideal_ph_max}
+                      </Text>
+                    </View>
 
-                {/* Compatibility Indicator and Button - moved to bottom of content */}
-                {!item.compatibility?.is_compatible && (
-                  <View style={styles.compatibilityContainer}>
-                    <AntDesign name="warning" size={20} color="red" style={styles.warningIcon} />
-                    <TouchableOpacity style={styles.issuesBtn} onPress={() => showCompatibilityIssues(item)}>
-                      <Text style={styles.issuesBtnText}>Issues</Text>
-                    </TouchableOpacity>
+                    {!item.compatibility?.is_compatible && (
+                      <View style={styles.compatibilityContainer}>
+                        <AntDesign name="warning" size={20} color="red" style={styles.warningIcon} />
+                        <TouchableOpacity style={styles.issuesBtn} onPress={() => showCompatibilityIssues(item)}>
+                          <Text style={styles.issuesBtnText}>Issues</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
+                </View>
+              </TouchableOpacity>
 
-              {/* Delete button (remains on the far right) */}
+              {/* Delete button stays OUTSIDE */}
               <TouchableOpacity
                 style={styles.deleteBtn}
                 onPress={() => {
@@ -488,6 +500,79 @@ const TankDetailsScreen = () => {
                   <Text style={styles.modalBtnText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={fishModalVisible} transparent animationType="slide" onRequestClose={() => setFishModalVisible(false)}>
+        <View style={styles.detailsOverlay}>
+          <View style={styles.detailsContainer}>
+            <ScrollView>
+              {/* Close button */}
+              <TouchableOpacity style={styles.detailsCloseBtn} onPress={() => setFishModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+
+              {/* Image */}
+              <Image
+                source={{
+                  uri: activeFish?.last_scan_image_url || activeFish?.metadata?.image_url || "https://via.placeholder.com/400x300",
+                }}
+                style={styles.detailsImage}
+              />
+
+              {/* Title */}
+              <Text style={styles.detailsTitle}>{activeFish?.metadata?.species_name}</Text>
+              <Text style={styles.detailsSubtitle}>{activeFish?.metadata?.species_Nomenclature}</Text>
+
+              {/* Info with icons */}
+              <View style={styles.detailsInfoRow}>
+                <Feather name="maximize" size={20} color="#ff8c00" />
+                <Text style={styles.detailsInfoText}>Max Size: {activeFish?.metadata?.maximum_size}</Text>
+              </View>
+
+              <View style={styles.detailsInfoRow}>
+                <Feather name="thermometer" size={20} color="#e63946" />
+                <Text style={styles.detailsInfoText}>Temp: {activeFish?.metadata?.temperature}°C</Text>
+              </View>
+
+              <View style={styles.detailsInfoRow}>
+                <Feather name="droplet" size={20} color="#00b4d8" />
+                <Text style={styles.detailsInfoText}>
+                  pH: {activeFish?.metadata?.ideal_ph_min} – {activeFish?.metadata?.ideal_ph_max}
+                </Text>
+              </View>
+
+              <View style={styles.detailsInfoRow}>
+                <MaterialCommunityIcons name="fish" size={22} color="#1d3557" />
+                <Text style={styles.detailsInfoText}>Category: {activeFish?.species?.category}</Text>
+              </View>
+
+              <View style={styles.detailsInfoRow}>
+                <MaterialCommunityIcons name="format-list-numbered" size={20} color="#6200ee" />
+                <Text style={styles.detailsInfoText}>Quantity: {activeFish?.quantity}</Text>
+              </View>
+
+              {/* Notes */}
+              {activeFish?.notes ? (
+                <>
+                  <Text style={styles.detailsSectionHeader}>Notes</Text>
+                  <Text style={styles.detailsNotes}>{activeFish.notes}</Text>
+                </>
+              ) : null}
+
+              {/* Compatibility */}
+              {!activeFish?.compatibility?.is_compatible && (
+                <>
+                  <Text style={styles.detailsSectionHeader}>Compatibility Issues</Text>
+                  {activeFish.compatibility.issues.map((issue, idx) => (
+                    <Text key={idx} style={styles.detailsIssueText}>
+                      • {issue}
+                    </Text>
+                  ))}
+                </>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -742,6 +827,89 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+  },
+  detailsOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+
+  detailsContainer: {
+    backgroundColor: "#fff",
+    width: "100%",
+    height: "88%",
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingBottom: 20,
+    overflow: "hidden",
+  },
+
+  detailsCloseBtn: {
+    position: "absolute",
+    right: 15,
+    top: 15,
+    zIndex: 20,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    padding: 6,
+    borderRadius: 20,
+  },
+
+  detailsImage: {
+    width: "100%",
+    height: 230,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+  },
+
+  detailsTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginTop: 15,
+    textAlign: "center",
+    color: "#000",
+  },
+
+  detailsSubtitle: {
+    fontSize: 15,
+    fontStyle: "italic",
+    textAlign: "center",
+    color: "#444",
+    marginBottom: 20,
+  },
+
+  detailsInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 6,
+    paddingHorizontal: 20,
+  },
+
+  detailsInfoText: {
+    fontSize: 16,
+    marginLeft: 10,
+    color: "#333",
+  },
+
+  detailsSectionHeader: {
+    marginTop: 20,
+    fontSize: 18,
+    fontWeight: "bold",
+    paddingHorizontal: 20,
+    color: "#000",
+  },
+
+  detailsNotes: {
+    fontSize: 15,
+    marginTop: 6,
+    paddingHorizontal: 20,
+    color: "#444",
+  },
+
+  detailsIssueText: {
+    fontSize: 15,
+    color: "#d62828",
+    paddingHorizontal: 20,
+    marginTop: 4,
   },
 });
 
