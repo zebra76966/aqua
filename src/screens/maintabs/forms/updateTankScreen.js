@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../../authcontext";
 import { baseUrl } from "../../../config";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 
 export default function UpdateTankScreen({ route, navigation }) {
   const { token } = useContext(AuthContext);
@@ -108,9 +109,34 @@ export default function UpdateTankScreen({ route, navigation }) {
   const renderTankForm = () => (
     <ScrollView>
       <TextInput style={styles.input} placeholder="Tank Name" value={name} onChangeText={setName} />
-      <TextInput style={styles.input} placeholder="Tank Type (FRESH/BRACKISH/SALT)" value={tankType} onChangeText={setTankType} />
+
+      {/* Tank Type Dropdown */}
+      <View
+        style={{
+          flexDirection: "row",
+          borderWidth: 1,
+          borderColor: "#ccc",
+          borderRadius: 8,
+          alignItems: "center",
+          paddingHorizontal: 10,
+          backgroundColor: "#fff",
+          marginBottom: 12,
+        }}
+      >
+        <MaterialCommunityIcons name="fish" size={18} color="#333" style={{ marginRight: 10 }} />
+        <Text style={styles.saveText}>{tankType}:</Text>
+        <Picker selectedValue={tankType} style={{ flex: 1, height: 50, color: "#000" }} onValueChange={(val) => setTankType(val)} placeholder={tankType}>
+          <Picker.Item label="Select Tank Type" value="" />
+          <Picker.Item label="Freshwater" value="FRESH" />
+          <Picker.Item label="Brackish" value="BRACKISH" />
+          <Picker.Item label="Saltwater" value="SALT" />
+        </Picker>
+      </View>
+
       <TextInput style={styles.input} placeholder="Size" value={size} onChangeText={setSize} keyboardType="numeric" />
+
       <TextInput style={styles.input} placeholder="Size Unit (L/G)" value={sizeUnit} onChangeText={setSizeUnit} />
+
       <TextInput style={styles.input} placeholder="Notes" value={notes} onChangeText={setNotes} multiline />
 
       <TouchableOpacity style={styles.saveBtn} onPress={updateTank}>

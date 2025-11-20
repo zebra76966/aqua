@@ -14,6 +14,8 @@ const AddTank = ({ navigation }) => {
   const [tankType, setTankType] = useState("");
   const [tankSize, setTankSize] = useState(35.6);
   const [sizeUnit, setSizeUnit] = useState("L"); // Default Litres
+  const [tankSizeInput, setTankSizeInput] = useState(String(tankSize));
+  const [tankSizeValue, setTankSizeValue] = useState(Number(tankSize));
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(""); // Error message state
@@ -39,7 +41,7 @@ const AddTank = ({ navigation }) => {
         body: JSON.stringify({
           name: tankName,
           tank_type: tankType.toUpperCase() === "FRESHWATER" ? "FRESH" : "SALT",
-          size: parseFloat(tankSize.toFixed(1)),
+          size: parseFloat(tankSize?.toFixed(1)),
           size_unit: sizeUnit,
           notes,
         }),
@@ -107,27 +109,37 @@ const AddTank = ({ navigation }) => {
 
         {/* Tank Size Input */}
         <View style={styles.sizeBox}>
-          <TextInput
-            style={styles.sizeInput}
-            keyboardType="numeric"
-            value={tankSize.toFixed(1).toString()}
-            onChangeText={(val) => {
-              const num = parseFloat(val);
-              if (!isNaN(num)) {
-                if (num > 200) {
-                  setErrorMsg("Tank size cannot exceed 200.");
-                } else {
-                  setErrorMsg("");
-                  setTankSize(num);
+          <View style={styles.sizeBox}>
+            <TextInput
+              style={styles.sizeInput}
+              keyboardType="numeric"
+              value={tankSizeInput}
+              onChangeText={(val) => {
+                setTankSizeInput(val); // always update input as string
+
+                if (val === "") {
+                  setErrorMessage("");
+                  return;
                 }
-              } else if (val === "") {
-                setTankSize(0);
-                setErrorMsg("");
-              }
-            }}
-            placeholder="0.00"
-            placeholderTextColor="#999"
-          />
+
+                const num = parseFloat(val);
+
+                if (isNaN(num)) {
+                  return; // keep typing freely even if invalid
+                }
+
+                setTankSizeValue(num);
+
+                if (num > 200) {
+                  setErrorMessage("Tank size cannot exceed 200 litres.");
+                } else {
+                  setErrorMessage("");
+                }
+              }}
+              placeholder="0.00"
+              placeholderTextColor="#999"
+            />
+          </View>
         </View>
 
         {/* Tank Size Slider */}
@@ -135,9 +147,11 @@ const AddTank = ({ navigation }) => {
           style={{ width: "100%", height: 40 }}
           minimumValue={0}
           maximumValue={200}
-          value={tankSize}
+          value={tankSizeValue}
           onValueChange={(value) => {
-            setTankSize(value);
+            setTankSizeValue(value);
+            setTankSizeInput(value.toFixed(1)); // sync cleanly into input
+
             if (value > 200) {
               setErrorMessage("Tank size cannot exceed 200.");
             } else {
@@ -145,11 +159,11 @@ const AddTank = ({ navigation }) => {
             }
           }}
           minimumTrackTintColor="#00CED1"
-          maximumTrackTintColor="#000000"
+          maximumTrackTintColor="#000"
           thumbTintColor="#00CED1"
         />
 
-        <Text style={styles.sliderValue}>{tankSize.toFixed(1)}</Text>
+        <Text style={styles.sliderValue}>{tankSizeValue > 0 ? tankSizeValue.toFixed(1) : "0.0"}</Text>
       </View>
 
       {/* Toggle Gallons / Litres */}

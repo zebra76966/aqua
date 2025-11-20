@@ -12,8 +12,11 @@ import { useFocusEffect } from "@react-navigation/native";
 const TankSetupScreen = ({ navigation }) => {
   const [tankName, setTankName] = useState("");
   const [tankType, setTankType] = useState("");
-  const [tankSize, setTankSize] = useState(35.6);
+  const [tankSize, setTankSize] = useState(50);
   const [sizeUnit, setSizeUnit] = useState("L");
+  const [tankSizeInput, setTankSizeInput] = useState(String(tankSize));
+  const [tankSizeValue, setTankSizeValue] = useState(Number(tankSize));
+
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingTanks, setCheckingTanks] = useState(true);
@@ -96,7 +99,7 @@ const TankSetupScreen = ({ navigation }) => {
         body: JSON.stringify({
           name: tankName,
           tank_type: tankType.toUpperCase() === "FRESHWATER" ? "FRESH" : "SALT",
-          size: parseFloat(tankSize.toFixed(1)),
+          size: parseFloat(tankSize?.toFixed(1)),
           size_unit: sizeUnit,
           notes,
         }),
@@ -170,18 +173,26 @@ const TankSetupScreen = ({ navigation }) => {
               <TextInput
                 style={styles.sizeInput}
                 keyboardType="numeric"
-                value={tankSize.toFixed(2).toString()}
+                value={tankSizeInput}
                 onChangeText={(val) => {
+                  setTankSizeInput(val); // always update input as string
+
+                  if (val === "") {
+                    setErrorMsg("");
+                    return;
+                  }
+
                   const num = parseFloat(val);
-                  if (!isNaN(num)) {
-                    if (num > 200) {
-                      setErrorMsg("Tank size cannot exceed 200.");
-                    } else {
-                      setErrorMsg("");
-                      setTankSize(num);
-                    }
-                  } else if (val === "") {
-                    setTankSize(0);
+
+                  if (isNaN(num)) {
+                    return; // keep typing freely even if invalid
+                  }
+
+                  setTankSizeValue(num);
+
+                  if (num > 200) {
+                    setErrorMsg("Tank size cannot exceed 200 litres.");
+                  } else {
                     setErrorMsg("");
                   }
                 }}
@@ -195,9 +206,11 @@ const TankSetupScreen = ({ navigation }) => {
               style={{ width: "100%", height: 40 }}
               minimumValue={0}
               maximumValue={200}
-              value={tankSize}
+              value={tankSizeValue}
               onValueChange={(value) => {
-                setTankSize(value);
+                setTankSizeValue(value);
+                setTankSizeInput(value.toFixed(1)); // sync cleanly into input
+
                 if (value > 200) {
                   setErrorMsg("Tank size cannot exceed 200.");
                 } else {
@@ -205,11 +218,11 @@ const TankSetupScreen = ({ navigation }) => {
                 }
               }}
               minimumTrackTintColor="#00CED1"
-              maximumTrackTintColor="#000000"
+              maximumTrackTintColor="#000"
               thumbTintColor="#00CED1"
             />
 
-            <Text style={styles.sliderValue}>{tankSize.toFixed(1)}</Text>
+            <Text style={styles.sliderValue}>{tankSizeValue > 0 ? tankSizeValue.toFixed(1) : "0.0"}</Text>
           </View>
 
           {/* Toggle Gallons / Litres */}
