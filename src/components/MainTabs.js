@@ -12,6 +12,8 @@ import SettingsScreen from "../screens/maintabs/settings";
 import WaterScreen from "../screens/maintabs/water";
 import TanksStackNavigator from "../screens/maintabs/tanks";
 import { SafeAreaView } from "react-native-safe-area-context";
+import MarketplaceStackNavigator from "../screens/maintabs/marketplace/MarketplaceStackNavigator";
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 
 const Tab = createBottomTabNavigator();
 
@@ -47,6 +49,14 @@ export default function MainTabs() {
             component={TanksStackNavigator}
             options={{
               tabBarIcon: ({ color }) => <MaterialCommunityIcons name="waves" size={22} color={color} />,
+            }}
+          />
+
+          <Tab.Screen
+            name="Marketplace"
+            component={MarketplaceStackNavigator}
+            options={{
+              tabBarIcon: ({ color }) => <FontAwesome5 name="store" size={22} color={color} />,
             }}
           />
 
