@@ -22,6 +22,7 @@ export const fetchListings = async (token) => {
     headers,
   });
   const data = await res.json();
+  console.log(data);
 
   if (!res.ok) throw new Error(data.message || "Failed to fetch listings");
   return data.data;
@@ -35,7 +36,6 @@ export const fetchListingDetails = async (id, token) => {
     headers,
   });
   const data = await res.json();
-  console.log(data);
 
   if (!res.ok) throw new Error(data.message || "Failed to fetch listing");
   return data.data;
@@ -95,7 +95,7 @@ export const fetchBids = async (listingId, token) => {
   });
 
   const data = await res.json();
-  console.log(data);
+
   if (!res.ok) throw new Error(data.message || "Failed to fetch bids");
   return data.data;
 };

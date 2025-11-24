@@ -46,6 +46,9 @@ const ListingDetailsScreen = ({ route, navigation }) => {
       setBidModalVisible(false);
       setBidAmount("");
       setBidMessage("");
+
+      // 🔥 Re-fetch listing + bids
+      loadDetails();
     } catch (err) {
       Alert.alert("Error", err.message || "Failed to place bid");
     } finally {
@@ -76,7 +79,7 @@ const ListingDetailsScreen = ({ route, navigation }) => {
       {/* 🔥 FIXED BOTTOM BUTTON BAR */}
       {listing.status !== "sold" && (
         <SafeAreaView style={styles.bottomBar}>
-          {!listing.is_mine_listing && (
+          {!listing.is_mine_listing && (!listing.my_bidding_history || listing.my_bidding_history.length === 0) && (
             <TouchableOpacity style={styles.buttonPrimary} onPress={() => setBidModalVisible(true)}>
               <Text style={styles.buttonPrimaryText}>Place a Bid</Text>
             </TouchableOpacity>
@@ -95,7 +98,7 @@ const ListingDetailsScreen = ({ route, navigation }) => {
 
           {/* Price Badge */}
           <View style={styles.priceBadge}>
-            <Text style={styles.priceBadgeText}>₹{listing.base_price}</Text>
+            <Text style={styles.priceBadgeText}>€{listing.base_price}</Text>
           </View>
 
           {/* Status Badge */}
@@ -126,7 +129,7 @@ const ListingDetailsScreen = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Your Bid</Text>
 
             <View style={styles.myBidCard}>
-              <Text style={styles.myBidAmount}>₹{listing.my_bidding_history[0].amount}</Text>
+              <Text style={styles.myBidAmount}>€{listing.my_bidding_history[0].amount}</Text>
 
               <Text
                 style={[
@@ -166,7 +169,7 @@ const ListingDetailsScreen = ({ route, navigation }) => {
                   </Text>
                 </View>
 
-                <Text style={styles.bidAmount}>₹{bid.amount}</Text>
+                <Text style={styles.bidAmount}>€{bid.amount}</Text>
 
                 <Text style={styles.bidDate}>{new Date(bid.created_at).toLocaleString()}</Text>
               </View>

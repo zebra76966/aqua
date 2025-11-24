@@ -59,7 +59,7 @@ const CreateListingScreen = ({ navigation }) => {
       );
 
       Alert.alert("Success", "Listing created successfully!");
-      navigation.goBack();
+      navigation.navigate("MyListings");
     } catch (err) {
       Alert.alert("Error", err.message || "Failed to create listing");
     } finally {

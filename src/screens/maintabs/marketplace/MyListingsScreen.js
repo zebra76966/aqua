@@ -52,7 +52,7 @@ const MyListingsScreen = ({ navigation }) => {
       <View style={styles.cardContent}>
         <Text style={styles.title}>{item.title}</Text>
 
-        <Text style={styles.price}>₹{item.base_price}</Text>
+        <Text style={styles.price}>€{item.base_price}</Text>
 
         <View style={styles.rowBetween}>
           <Text style={[styles.status, item.status === "active" && styles.statusActive]}>{item.status.toUpperCase()}</Text>
@@ -85,6 +85,10 @@ const MyListingsScreen = ({ navigation }) => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={<Text style={styles.emptyText}>You haven't posted any listings yet.</Text>}
       />
+
+      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("CreateListing")}>
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -223,5 +227,23 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 11,
     color: "#888",
+  },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 100,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#2cd4c8",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 3,
+  },
+  fabText: {
+    color: "#004d40",
+    fontSize: 30,
+    lineHeight: 30,
+    fontWeight: "bold",
   },
 });

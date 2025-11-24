@@ -55,7 +55,7 @@ const MarketplaceHomeScreen = ({ navigation }) => {
           {item.title}
         </Text>
 
-        <Text style={styles.price}>₹{item.base_price}</Text>
+        <Text style={styles.price}>€{item.base_price}</Text>
 
         <Text style={styles.seller}>Seller: {item.seller}</Text>
 
