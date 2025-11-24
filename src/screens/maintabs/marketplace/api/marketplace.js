@@ -22,8 +22,9 @@ export const fetchListings = async (token) => {
     headers,
   });
   const data = await res.json();
+
   if (!res.ok) throw new Error(data.message || "Failed to fetch listings");
-  return data;
+  return data.data;
 };
 
 // GET LISTING DETAILS
@@ -34,6 +35,7 @@ export const fetchListingDetails = async (id, token) => {
     headers,
   });
   const data = await res.json();
+  console.log(data);
 
   if (!res.ok) throw new Error(data.message || "Failed to fetch listing");
   return data.data;

@@ -72,7 +72,7 @@ const MyListingsScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.header}>My Listings</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -85,7 +85,7 @@ const MyListingsScreen = ({ navigation }) => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={<Text style={styles.emptyText}>You haven't posted any listings yet.</Text>}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -96,7 +96,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 1,
+    paddingBottom: 100,
   },
   center: {
     flex: 1,

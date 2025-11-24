@@ -4,6 +4,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { fetchListings } from "./api/marketplace";
 import { AuthContext } from "../../../authcontext";
+import { Image } from "react-native";
 
 const MarketplaceHomeScreen = ({ navigation }) => {
   const { token } = useContext(AuthContext);
@@ -37,10 +38,33 @@ const MarketplaceHomeScreen = ({ navigation }) => {
 
   const renderItem = ({ item }) => (
     <TouchableOpacity style={styles.card} onPress={() => navigation.navigate("ListingDetails", { listingId: item.id })}>
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.price}>${item.base_price}</Text>
-      <Text style={styles.category}>{item.category}</Text>
-      <Text style={styles.location}>{item.location}</Text>
+      {/* Thumbnail */}
+      <View style={styles.thumbWrapper}>
+        {item.thumbnail ? (
+          <Image source={{ uri: item.thumbnail }} style={styles.thumb} />
+        ) : (
+          <View style={styles.noThumb}>
+            <Text style={{ color: "#aaa" }}>No Image</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Right Content */}
+      <View style={styles.cardContent}>
+        <Text style={styles.title} numberOfLines={1}>
+          {item.title}
+        </Text>
+
+        <Text style={styles.price}>₹{item.base_price}</Text>
+
+        <Text style={styles.seller}>Seller: {item.seller}</Text>
+
+        <View style={styles.rowBetween}>
+          <Text style={[styles.status, item.status === "active" && styles.statusActive]}>{item.status.toUpperCase()}</Text>
+
+          <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()}</Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 
@@ -168,5 +192,91 @@ const styles = StyleSheet.create({
     color: "#2cd4c8",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  card: {
+    flexDirection: "row",
+    backgroundColor: "#f8fffe",
+    borderWidth: 1,
+    borderColor: "#2cd4c8",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+
+  thumbWrapper: {
+    width: 90,
+    height: 90,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "#e6f7f7",
+    marginRight: 12,
+  },
+
+  thumb: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+
+  noThumb: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  cardContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    paddingVertical: 4,
+  },
+
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+  },
+
+  price: {
+    marginTop: 4,
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#2cd4c8",
+  },
+
+  seller: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#777",
+  },
+
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+    alignItems: "center",
+  },
+
+  status: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#666",
+    backgroundColor: "#e6e6e6",
+  },
+
+  statusActive: {
+    backgroundColor: "#d2f7f2",
+    color: "#0d9c7a",
+  },
+
+  date: {
+    fontSize: 11,
+    color: "#888",
   },
 });
