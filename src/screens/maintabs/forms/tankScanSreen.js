@@ -149,6 +149,7 @@ const TankScanScreenTabs = () => {
       });
 
       const result = await response.json();
+      console.log("result", result);
       if (!response.ok) throw new Error(result.detail || `${type} upload failed`);
       // (keep your mapping code the same)
       const predictions = result?.species || [];

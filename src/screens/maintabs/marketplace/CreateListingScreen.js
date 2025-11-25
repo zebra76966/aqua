@@ -68,7 +68,7 @@ const CreateListingScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
       <Text style={styles.header}>Create Listing</Text>
 
       <TextInput placeholder="Title" placeholderTextColor="#2cd4c8" style={styles.input} value={title} onChangeText={setTitle} />
