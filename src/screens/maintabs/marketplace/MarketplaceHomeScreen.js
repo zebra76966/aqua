@@ -77,7 +77,7 @@ const MarketplaceHomeScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <View style={styles.container} edges={["top"]}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <Text style={styles.header}>Marketplace</Text>
 
@@ -99,7 +99,7 @@ const MarketplaceHomeScreen = ({ navigation }) => {
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("CreateListing")}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -111,6 +111,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     paddingHorizontal: 16,
     paddingTop: 10,
+    paddingBottom: 100,
   },
   center: {
     flex: 1,
