@@ -6,6 +6,7 @@ import TankDetailsScreen from "./tankDetail";
 import TankScanScreenTabs from "./forms/tankScanSreen";
 import DiseaseScanScreen from "./forms/diseaseScanScreen";
 import CompareSpeciesScreen from "./compareSpeciesScreen";
+import AddSpeciesScreen from "./forms/AddSpeciesScreen";
 
 const TanksStack = createNativeStackNavigator();
 
@@ -19,6 +20,7 @@ function TanksStackNavigator() {
       <TanksStack.Screen name="TankScanScreenTabs" component={TankScanScreenTabs} />
       <TanksStack.Screen name="DiseaseScanScreen" component={DiseaseScanScreen} />
       <TanksStack.Screen name="CompareSpeciesScreen" component={CompareSpeciesScreen} />
+      <TanksStack.Screen name="AddSpeciesScreen" component={AddSpeciesScreen} />
     </TanksStack.Navigator>
   );
 }

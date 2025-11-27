@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, FlatList, Image, ScrollView, TouchableOpacity, Modal, TextInput, Alert, Animated } from "react-native";
 import { Feather, MaterialCommunityIcons, AntDesign } from "@expo/vector-icons";
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { useRoute, useNavigation, useIsFocused } from "@react-navigation/native";
 import { AuthContext } from "../../authcontext";
 import { baseUrl } from "../../config";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
@@ -44,9 +44,13 @@ const TankDetailsScreen = () => {
     }
   }, [isExpanded]);
 
+  const isFocused = useIsFocused();
+
   useEffect(() => {
-    fetchTankData();
-  }, [tankId, token]);
+    if (isFocused) {
+      fetchTankData();
+    }
+  }, [isFocused, tankId, token]);
 
   const fetchTankData = async () => {
     try {
@@ -107,47 +111,6 @@ const TankDetailsScreen = () => {
       console.error(err);
       setLoading(false);
       Alert.alert("Error", "Failed to delete species");
-    }
-  };
-
-  const handleAddSpecies = async () => {
-    if (!className || !quantity) {
-      Alert.alert("Error", "Class name and quantity are required");
-      return;
-    }
-    try {
-      const body = {
-        tank_id: tankId,
-        class_name: className,
-        quantity: parseInt(quantity),
-        notes,
-        last_scan_image_url: imageUrl,
-      };
-      const res = await fetch(`${baseUrl}/tanks/${tankId}/add-species/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error("Failed to add species: " + errorText);
-      } else {
-        Alert.alert("Success", "Added successfully!");
-      }
-      // Don't reset form fields here, assume a successful add leads to navigating back or clearing via context.
-      // setAddModalVisible(false); // If you have an add modal, close it
-      // setClassName("");
-      // setQuantity("");
-      // setNotes("");
-      // setImageUrl("");
-      fetchTankData(); // Refresh species list and compatibility data
-    } catch (err) {
-      console.error(err);
-      Alert.alert("Error", "Failed to add species");
     }
   };
 
@@ -354,7 +317,10 @@ const TankDetailsScreen = () => {
           <>
             {/* Add Species Button */}
             <Animated.View style={{ transform: [{ translateX: slideAnim1 }], bottom: -10 }}>
-              <TouchableOpacity style={[styles.addButton, { backgroundColor: "#4CAF50", marginBottom: 10 }]} onPress={() => setAddModalVisible(true)}>
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: "#4CAF50", marginBottom: 10 }]}
+                onPress={() => navigation.navigate("AddSpeciesScreen", { tankId: tank.id, type: tank.tank_type })}
+              >
                 <MaterialCommunityIcons name="plus" size={26} color="#fff" />
               </TouchableOpacity>
             </Animated.View>
@@ -452,55 +418,6 @@ const TankDetailsScreen = () => {
                 <Text style={styles.modalBtnText}>Close</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-      {/* Add Species Modal */}
-      <Modal visible={addModalVisible} transparent animationType="slide" onRequestClose={() => setAddModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { maxHeight: "90%" }]}>
-            <ScrollView>
-              <Text style={styles.modalTitle}>Add New Species</Text>
-
-              {/* Image Upload */}
-              {imageUrl ? <Image source={{ uri: imageUrl }} style={{ width: "100%", height: 180, borderRadius: 10, marginBottom: 10 }} /> : null}
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: "#00CED1", marginBottom: 12 }]}
-                onPress={async () => {
-                  const result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                    allowsEditing: true,
-                    quality: 0.7,
-                  });
-                  if (!result.canceled) {
-                    setImageUrl(result.assets[0].uri);
-                  }
-                }}
-              >
-                <Text style={styles.modalBtnText}>{imageUrl ? "Change Image" : "Upload Image"}</Text>
-              </TouchableOpacity>
-
-              {/* Form Inputs */}
-              <TextInput placeholder="Class Name" value={className} onChangeText={setClassName} placeholderTextColor="#2cd4c8" style={styles.input} />
-              <TextInput placeholder="Quantity" value={quantity} onChangeText={setQuantity} placeholderTextColor="#2cd4c8" keyboardType="numeric" style={styles.input} />
-              <TextInput placeholder="Notes (optional)" value={notes} onChangeText={setNotes} placeholderTextColor="#2cd4c8" multiline style={[styles.input, { height: 80 }]} />
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalBtn, { backgroundColor: "#4CAF50" }]}
-                  onPress={async () => {
-                    await handleAddSpecies();
-                    setAddModalVisible(false);
-                    setIsExpanded(false);
-                  }}
-                >
-                  <Text style={styles.modalBtnText}>Submit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: "#aaa" }]} onPress={() => setAddModalVisible(false)}>
-                  <Text style={styles.modalBtnText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
           </View>
         </View>
       </Modal>
