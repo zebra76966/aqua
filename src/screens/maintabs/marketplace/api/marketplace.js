@@ -154,6 +154,20 @@ export const fetchSellerProfile = async (sellerId, token) => {
   return data.data;
 };
 
+export const fetchMySellerProfile = async (token) => {
+  const headers = getAuthHeaders(token);
+
+  const res = await fetch(`${baseUrl}/marketplace/sellers/profile/me/`, {
+    method: "GET",
+    headers,
+  });
+
+  const data = await res.json();
+  console.log("My Profile", data?.data?.seller_id);
+  if (!res.ok) throw new Error(data.message || "Failed to fetch seller profile");
+  return data?.data?.seller_id;
+};
+
 export const updateMySellerProfile = async (payload, token) => {
   const headers = getAuthHeaders(token, true);
 

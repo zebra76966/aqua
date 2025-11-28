@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext, useCallback } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../../authcontext";
-import { fetchMyListings } from "./api/marketplace";
+import { fetchMyListings, fetchMySellerProfile } from "./api/marketplace";
 import { Image } from "react-native";
 import Feather from "react-native-vector-icons/Feather";
 
@@ -13,6 +13,7 @@ const MyListingsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [Id, setId] = useState("");
 
   const loadData = async () => {
     setError("");
@@ -27,8 +28,22 @@ const MyListingsScreen = ({ navigation }) => {
     }
   };
 
+  const loadMyProfile = async () => {
+    setError("");
+    try {
+      const data = await fetchMySellerProfile(token);
+
+      setId(data);
+    } catch (err) {
+      setError(err.message || "Failed to load your profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
+    loadMyProfile();
   }, []);
 
   const onRefresh = useCallback(() => {
@@ -75,9 +90,9 @@ const MyListingsScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {console.log("listings", listings)}
-      <TouchableOpacity style={styles.editProfileBtn} onPress={() => navigation.navigate("UpdateSellerProfile")}>
-        <Feather name="edit-3" size={20} color="#004d40" />
-        <Text style={styles.editProfileText}>Edit Profile</Text>
+      <TouchableOpacity style={styles.editProfileBtn} onPress={() => navigation.navigate("SellerProfile", { sellerId: Id, origin: "MyUser" })}>
+        <Feather name="user" size={20} color="#004d40" />
+        <Text style={styles.editProfileText}>My Profile</Text>
       </TouchableOpacity>
 
       <Text style={styles.header}>My Listings</Text>

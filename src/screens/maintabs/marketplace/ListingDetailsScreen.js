@@ -114,7 +114,7 @@ const ListingDetailsScreen = ({ route, navigation }) => {
 
         {/* Seller + Created Date */}
         <View style={styles.metaRow}>
-          <TouchableOpacity onPress={() => navigation.navigate("SellerProfile", { sellerId: listing.seller_user_id })}>
+          <TouchableOpacity onPress={() => navigation.navigate("SellerProfile", { sellerId: listing.seller_user_id, origin: "OtherUser" })}>
             <Text style={[styles.metaText, { color: "#2cd4c8", fontWeight: "600" }]}>Seller: {listing.seller}</Text>
           </TouchableOpacity>
 

@@ -4,9 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../../authcontext";
 import { fetchSellerProfile, createSellerReview } from "./api/marketplace";
 import RatingStars from "./RatingStars";
+import { Feather } from "@expo/vector-icons";
 
 const SellerProfileScreen = ({ route, navigation }) => {
-  const { sellerId } = route.params;
+  const { sellerId, origin } = route.params;
   const { token } = useContext(AuthContext);
 
   const [profile, setProfile] = useState(null);
@@ -65,6 +66,13 @@ const SellerProfileScreen = ({ route, navigation }) => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Header */}
+        {console.log(profile)}
+        {origin == "MyUser" && (
+          <TouchableOpacity style={styles.editProfileBtn} onPress={() => navigation.navigate("UpdateSellerProfile")}>
+            <Feather name="edit-3" size={20} color="#004d40" />
+            <Text style={styles.editProfileText}>Update Profile</Text>
+          </TouchableOpacity>
+        )}
         <View style={styles.header}>
           <Image
             source={{
@@ -99,10 +107,11 @@ const SellerProfileScreen = ({ route, navigation }) => {
         <View style={styles.section}>
           <View style={styles.reviewHeaderRow}>
             <Text style={styles.sectionTitle}>Reviews ({profile.reviews_count})</Text>
-
-            <TouchableOpacity onPress={() => setReviewModal(true)} style={styles.reviewBtn}>
-              <Text style={styles.reviewBtnText}>Write Review</Text>
-            </TouchableOpacity>
+            {origin != "MyUser" && (
+              <TouchableOpacity onPress={() => setReviewModal(true)} style={styles.reviewBtn}>
+                <Text style={styles.reviewBtnText}>Write Review</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {profile.recent_reviews?.length === 0 && <Text style={styles.noReviews}>No reviews yet.</Text>}
@@ -240,4 +249,25 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   small: { fontSize: 12, color: "#777", marginTop: 6 },
+  editProfileBtn: {
+    position: "absolute",
+    top: 10,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#c9fff8",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#2cd4c8",
+    zIndex: 20,
+  },
+
+  editProfileText: {
+    marginLeft: 6,
+    color: "#004d40",
+    fontWeight: "600",
+    fontSize: 13,
+  },
 });
