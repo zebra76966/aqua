@@ -6,11 +6,82 @@ import Svg, { Circle } from "react-native-svg";
 import { AuthContext } from "../authcontext";
 import { baseUrl } from "../config";
 import { Camera, CameraView } from "expo-camera";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 
 import * as ImagePicker from "expo-image-picker";
 import { Linking } from "react-native";
+import { TextInput } from "react-native-gesture-handler";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true, // 🔔 notification pop-up
+    shouldShowList: true, // 📱 shows in notification center
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 export default function DashboardScreen({ navigation }) {
+  const [logs, setLogs] = useState([]);
+  const [logModal, setLogModal] = useState(false);
+  const [logText, setLogText] = useState("");
+  const [reminderTime, setReminderTime] = useState(null);
+
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedTime, setSelectedTime] = useState(new Date());
+
+  const loadLogs = async () => {
+    const json = await AsyncStorage.getItem("tank_logs");
+    if (json) setLogs(JSON.parse(json));
+  };
+
+  useEffect(() => {
+    loadLogs();
+  }, []);
+
+  const saveLogs = async (logs) => {
+    try {
+      await AsyncStorage.setItem("tank_logs", JSON.stringify(logs));
+      setLogs(logs);
+    } catch (err) {
+      console.log("Saving logs failed:", err);
+    }
+  };
+
+  const handleAddLog = async () => {
+    if (!logText.trim()) return alert("Please enter something");
+
+    let reminderId = null;
+    if (reminderTime) {
+      reminderId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Aquarium Reminder",
+          body: logText,
+        },
+        trigger: { seconds: reminderTime * 60 },
+      });
+    }
+
+    const newLog = {
+      id: Date.now().toString(),
+      text: logText,
+      reminderId,
+      created_at: new Date().toISOString(),
+    };
+
+    const updated = [newLog, ...logs];
+    await saveLogs(updated);
+
+    setLogText("");
+    setReminderTime(null);
+    setLogModal(false);
+  };
+  const deleteLog = async (id) => {
+    const updated = logs.filter((l) => l.id !== id);
+    await saveLogs(updated);
+  };
+
   const [permissionsChecked, setPermissionsChecked] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const requestAllPermissions = async () => {
@@ -106,7 +177,6 @@ export default function DashboardScreen({ navigation }) {
       }
 
       const json = await response.json();
-      console.log("Active Tank Response:", json);
 
       if (json.status_code === 400 || !json.data || Object.keys(json.data).length === 0) {
         setErrorMessage(json.message || "No data available. Please run a water scan first.");
@@ -387,8 +457,72 @@ export default function DashboardScreen({ navigation }) {
             )}
           </View>
 
+          {/* AI Recommendations - Slidable Cards */}
+          {tankData?.ai_recommendations?.recommendations?.length > 0 && (
+            <View style={{ marginBottom: 20 }}>
+              <View style={styles.aiHeader}>
+                <Feather name="cpu" size={18} color="#00CED1" />
+                <Text style={styles.aiTitle}>AI Recommendations</Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToAlignment="center"
+                decelerationRate="fast"
+                snapToInterval={280} // width of card + margin
+                contentContainerStyle={{ paddingRight: 20 }}
+              >
+                {tankData.ai_recommendations.recommendations.map((rec, index) => (
+                  <View key={index} style={styles.aiCardSlide}>
+                    <Text style={styles.aiIssue}>⚠ {rec.issue}</Text>
+
+                    <Text style={styles.aiDetails}>{rec.details}</Text>
+
+                    {rec.actions?.length > 0 && (
+                      <View style={styles.aiActionsBox}>
+                        {rec.actions.map((act, i) => (
+                          <View key={i} style={styles.aiActionRow}>
+                            <Feather name="check-circle" size={16} color="#00CED1" />
+                            <Text style={styles.aiActionText}>{act}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {logs.length > 0 && (
+            <View style={{ marginBottom: 20 }}>
+              <View style={styles.aiHeader}>
+                <Feather name="book" size={18} color="#00CED1" />
+                <Text style={styles.aiTitle}>Your Logs</Text>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToAlignment="center" decelerationRate="fast" snapToInterval={280} contentContainerStyle={{ paddingRight: 20 }}>
+                {logs.map((log) => (
+                  <View key={log.id} style={styles.aiCardSlide}>
+                    <Text style={{ fontWeight: "700", marginBottom: 6 }}>📝 Log</Text>
+                    <Text style={styles.aiDetails}>{log.text}</Text>
+
+                    <Text style={{ marginTop: 8, color: "#777", fontSize: 12 }}>{new Date(log.created_at).toLocaleString()}</Text>
+
+                    {log.reminderId && <Text style={{ marginTop: 4, fontSize: 12, color: "#00A6A6" }}>🔔 Reminder Set</Text>}
+
+                    <TouchableOpacity onPress={() => deleteLog(log.id)} style={{ marginTop: 10 }}>
+                      <Text style={{ color: "#D9534F", fontWeight: "bold" }}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           {/* Quick Add Log */}
-          <TouchableOpacity style={styles.quickAddLog} onPress={() => setShowWorkInProgress(true)}>
+          <TouchableOpacity style={styles.quickAddLog} onPress={() => setLogModal(true)}>
             <Text style={styles.quickAddText}>QUICK ADD LOG</Text>
             <AntDesign name="pluscircle" size={20} color="white" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
@@ -417,6 +551,53 @@ export default function DashboardScreen({ navigation }) {
                   <Text style={{ color: "white", fontWeight: "bold" }}>OKAY</Text>
                 </TouchableOpacity>
               </Animated.View>
+            </View>
+          </Modal>
+
+          <Modal visible={logModal} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <Text style={styles.modalTitle}>Add Log</Text>
+
+                <TextInput placeholder="What did you do?" style={styles.inputBox} multiline value={logText} onChangeText={setLogText} />
+
+                {/* Time Picker Trigger */}
+                <TouchableOpacity style={styles.timeInput} onPress={() => setShowTimePicker(true)}>
+                  <Text style={styles.timeInputLabel}>Reminder Time</Text>
+                  <Text style={styles.timeInputValue}>{selectedTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
+                </TouchableOpacity>
+
+                {/* Show Time Picker */}
+                {showTimePicker && (
+                  <DateTimePicker
+                    value={selectedTime}
+                    mode="time"
+                    display="spinner" // iOS-style wheel
+                    onChange={(event, date) => {
+                      setShowTimePicker(false);
+                      if (date) setSelectedTime(date);
+                    }}
+                  />
+                )}
+
+                <TouchableOpacity
+                  onPress={() => {
+                    // convert selectedTime → minutes difference from now
+                    const now = new Date();
+                    const diffMs = selectedTime - now;
+                    const minutes = Math.max(0, Math.round(diffMs / 60000));
+                    setReminderTime(minutes.toString());
+                    handleAddLog();
+                  }}
+                  style={styles.btnPrimary}
+                >
+                  <Text style={{ color: "white", fontWeight: "bold" }}>Save</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setLogModal(false)} style={styles.btnOutline}>
+                  <Text style={{ color: "#00CED1", fontWeight: "bold" }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </Modal>
         </ScrollView>
@@ -552,5 +733,105 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  aiHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+
+  aiTitle: {
+    marginLeft: 8,
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#00A6A6",
+  },
+
+  aiCardSlide: {
+    width: 260,
+    backgroundColor: "#ffffffff",
+    padding: 16,
+    borderRadius: 14,
+    marginRight: 16,
+    marginBottom: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+
+  aiIssue: {
+    fontWeight: "700",
+    fontSize: 15,
+    color: "#D9534F",
+    marginBottom: 8,
+  },
+
+  aiDetails: {
+    fontSize: 13,
+    color: "#444",
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+
+  aiActionsBox: {
+    marginTop: 4,
+  },
+
+  aiActionRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 6,
+  },
+
+  aiActionText: {
+    marginLeft: 6,
+    fontSize: 13,
+    color: "#333",
+    flex: 1,
+  },
+  inputBox: {
+    borderWidth: 1,
+    borderColor: "#00CED1",
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 10,
+    color: "#333",
+  },
+  btnPrimary: {
+    backgroundColor: "#00CED1",
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 20,
+    alignItems: "center",
+  },
+  btnOutline: {
+    borderWidth: 1,
+    borderColor: "#00CED1",
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 10,
+    alignItems: "center",
+  },
+  timeInput: {
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#00CED1",
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#F9FFFF",
+  },
+
+  timeInputLabel: {
+    fontSize: 12,
+    color: "#00A6A6",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+
+  timeInputValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
   },
 });

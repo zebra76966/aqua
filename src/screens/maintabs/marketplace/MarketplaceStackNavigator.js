@@ -7,6 +7,8 @@ import ListingDetailsScreen from "./ListingDetailsScreen";
 import CreateListingScreen from "./CreateListingScreen";
 import ListingBidsScreen from "./ListingBidsScreen";
 import MyListingsScreen from "./MyListingsScreen";
+import SellerProfileScreen from "./SellerProfileScreen";
+import UpdateSellerProfileScreen from "./UpdateSellerProfileScreen";
 
 const MarketplaceStack = createNativeStackNavigator();
 
@@ -18,6 +20,8 @@ export default function MarketplaceStackNavigator() {
       <MarketplaceStack.Screen name="CreateListing" component={CreateListingScreen} />
       <MarketplaceStack.Screen name="ListingBids" component={ListingBidsScreen} />
       <MarketplaceStack.Screen name="MyListings" component={MyListingsScreen} />
+      <MarketplaceStack.Screen name="SellerProfile" component={SellerProfileScreen} />
+      <MarketplaceStack.Screen name="UpdateSellerProfile" component={UpdateSellerProfileScreen} />
     </MarketplaceStack.Navigator>
   );
 }

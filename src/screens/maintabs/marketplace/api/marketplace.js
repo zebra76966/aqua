@@ -140,3 +140,65 @@ export const fetchMyListings = async (token) => {
   if (!res.ok) throw new Error(data.message || "Failed to fetch your listings");
   return data.data;
 };
+
+export const fetchSellerProfile = async (sellerId, token) => {
+  const headers = getAuthHeaders(token);
+
+  const res = await fetch(`${baseUrl}/marketplace/sellers/${sellerId}/profile/`, {
+    method: "GET",
+    headers,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch seller profile");
+  return data.data;
+};
+
+export const updateMySellerProfile = async (payload, token) => {
+  const headers = getAuthHeaders(token, true);
+
+  const formData = new FormData();
+
+  if (payload.expertise_tags) {
+    formData.append("expertise_tags", payload.expertise_tags);
+  }
+
+  if (payload.profile_video) {
+    formData.append("profile_video", {
+      uri: payload.profile_video.uri,
+      name: payload.profile_video.fileName || "video.mp4",
+      type: payload.profile_video.mimeType || "video/mp4",
+    });
+  }
+
+  const res = await fetch(`${baseUrl}/marketplace/sellers/me/profile/`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to update seller profile");
+  return data.data;
+};
+
+export const createSellerReview = async (sellerId, rating, comment, listingId, token) => {
+  const headers = getAuthHeaders(token);
+
+  const body = JSON.stringify({
+    rating,
+    comment,
+    listing_id: listingId,
+  });
+
+  const res = await fetch(`${baseUrl}/marketplace/sellers/${sellerId}/reviews/`, {
+    method: "POST",
+    headers,
+    body,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to submit review");
+
+  return data;
+};

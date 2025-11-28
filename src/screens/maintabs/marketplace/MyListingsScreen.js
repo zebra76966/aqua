@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../../authcontext";
 import { fetchMyListings } from "./api/marketplace";
 import { Image } from "react-native";
+import Feather from "react-native-vector-icons/Feather";
 
 const MyListingsScreen = ({ navigation }) => {
   const { token } = useContext(AuthContext);
@@ -73,6 +74,12 @@ const MyListingsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {console.log("listings", listings)}
+      <TouchableOpacity style={styles.editProfileBtn} onPress={() => navigation.navigate("UpdateSellerProfile")}>
+        <Feather name="edit-3" size={20} color="#004d40" />
+        <Text style={styles.editProfileText}>Edit Profile</Text>
+      </TouchableOpacity>
+
       <Text style={styles.header}>My Listings</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -245,5 +252,26 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 30,
     fontWeight: "bold",
+  },
+  editProfileBtn: {
+    position: "absolute",
+    top: 10,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#c9fff8",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#2cd4c8",
+    zIndex: 20,
+  },
+
+  editProfileText: {
+    marginLeft: 6,
+    color: "#004d40",
+    fontWeight: "600",
+    fontSize: 13,
   },
 });

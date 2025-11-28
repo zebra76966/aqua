@@ -1,6 +1,7 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import LoginScreen from "./src/screens/login";
 import SignupScreen from "./src/screens/signup";
@@ -22,30 +23,31 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName="First" screenOptions={{ headerShown: false }}>
-            {/* Screens WITHOUT navbar */}
-            <Stack.Screen name="First" component={FirstScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <AuthProvider>
+          <NavigationContainer>
+            <Stack.Navigator initialRouteName="First" screenOptions={{ headerShown: false }}>
+              {/* Screens WITHOUT navbar */}
+              <Stack.Screen name="First" component={FirstScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+              <Stack.Screen name="Signup" component={SignupScreen} />
+              <Stack.Screen name="tankSetup" component={TankSetupScreen} />
+              <Stack.Screen name="TankScan" component={TankScanScreen} />
+              <Stack.Screen name="PhScanScreen" component={PhScanScreen} />
+              <Stack.Screen name="TankAddWaterParams" component={TankAddWaterParams} />
+              <Stack.Screen name="TankSuccess" component={TankSuccessScreen} />
+              <Stack.Screen name="ImagePreview" component={ImagePreview} />
 
-            <Stack.Screen name="Signup" component={SignupScreen} />
-            <Stack.Screen name="tankSetup" component={TankSetupScreen} />
-            <Stack.Screen name="TankScan" component={TankScanScreen} />
-            <Stack.Screen name="PhScanScreen" component={PhScanScreen} />
-            <Stack.Screen name="TankAddWaterParams" component={TankAddWaterParams} />
-            <Stack.Screen name="TankSuccess" component={TankSuccessScreen} />
-            <Stack.Screen name="ImagePreview" component={ImagePreview} />
-
-            {/* Screens WITH navbar */}
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            {/* <Stack.Screen name="UpdateTank" component={UpdateTankScreen} /> */}
-            {/* <Stack.Screen name="AddTank" component={AddTank} /> */}
-          </Stack.Navigator>
-        </NavigationContainer>
-      </AuthProvider>
-    </ThemeProvider>
+              {/* Screens WITH navbar */}
+              <Stack.Screen name="MainTabs" component={MainTabs} />
+              {/* <Stack.Screen name="UpdateTank" component={UpdateTankScreen} /> */}
+              {/* <Stack.Screen name="AddTank" component={AddTank} /> */}
+            </Stack.Navigator>
+          </NavigationContainer>
+        </AuthProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

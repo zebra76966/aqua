@@ -412,7 +412,7 @@ const TankScanScreenTabs = () => {
   if (showPreview && (videoUri || imageUri)) {
     const isVideo = !!videoUri;
     return (
-      <View style={styles.previewContainer}>
+      <SafeAreaView style={[styles.previewContainer, { flex: 1 }]}>
         <Text style={styles.previewTitle}>{isVideo ? "Preview Video" : "Preview Image"}</Text>
 
         {isVideo ? (
@@ -439,7 +439,7 @@ const TankScanScreenTabs = () => {
             <Text style={styles.previewButtonText}>Upload</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 

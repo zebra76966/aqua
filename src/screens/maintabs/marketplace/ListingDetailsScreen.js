@@ -110,9 +110,14 @@ const ListingDetailsScreen = ({ route, navigation }) => {
         {/* Title */}
         <Text style={styles.title}>{listing.title}</Text>
 
+        {console.log("listing id", listing)}
+
         {/* Seller + Created Date */}
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>Seller: {listing.seller}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("SellerProfile", { sellerId: listing.seller_user_id })}>
+            <Text style={[styles.metaText, { color: "#2cd4c8", fontWeight: "600" }]}>Seller: {listing.seller}</Text>
+          </TouchableOpacity>
+
           <Text style={styles.metaText}>{new Date(listing.created_at).toLocaleDateString()}</Text>
         </View>
 
