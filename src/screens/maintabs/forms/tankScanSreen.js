@@ -343,26 +343,27 @@ const TankScanScreenTabs = () => {
         return;
       }
 
+      // Only open gallery ONCE, with cropping
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All, // both images & videos
-        quality: 0.8,
-        allowsEditing: false,
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        quality: 1,
+        allowsEditing: true, // cropping here!!
+        aspect: [4, 3],
       });
 
-      if (result.canceled) return;
+      if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
 
-      if (!asset) return;
-
-      // Detect whether it's image or video
       if (asset.type === "video") {
         setVideoUri(asset.uri);
         setShowPreview(true);
-      } else {
-        setImageUri(asset.uri);
-        setShowPreview(true);
+        return;
       }
+
+      // Single cropped image, no second picker!
+      setImageUri(asset.uri);
+      setShowPreview(true);
     } catch (err) {
       Alert.alert("Error", err.message || "Failed to pick media.");
     }

@@ -209,7 +209,28 @@ const TankDetailsScreen = () => {
         </View>
       )} */}
 
-      <Text style={styles.sectionTitle}>Species</Text>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <Text style={styles.sectionTitle}>Species</Text>
+
+        <TouchableOpacity
+          style={{
+            backgroundColor: "#ff8c00",
+            padding: 12,
+            borderRadius: 10,
+            marginRight: 5,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+          onPress={() =>
+            navigation.navigate("TankScanScreenTabs", {
+              tankDataLocal: tank,
+              tankId: tank.id,
+            })
+          }
+        >
+          <MaterialCommunityIcons name="cube-scan" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
       {species && species.length === 0 ? (
         <View style={{ justifyContent: "center", alignItems: "center", marginTop: 50 }}>
@@ -311,43 +332,18 @@ const TankDetailsScreen = () => {
 
       {/* Floating Add Button */}
       {/* Floating Action Button Group */}
-      <View style={{ position: "absolute", bottom: 50, right: 0 }}>
-        {/* Expanded Buttons */}
-        {isExpanded && (
-          <>
-            {/* Add Species Button */}
-            <Animated.View style={{ transform: [{ translateX: slideAnim1 }], bottom: -10 }}>
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: "#4CAF50", marginBottom: 10 }]}
-                onPress={() => navigation.navigate("AddSpeciesScreen", { tankId: tank.id, type: tank.tank_type })}
-              >
-                <MaterialCommunityIcons name="plus" size={26} color="#fff" />
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* Tank Scan Button */}
-            <Animated.View style={{ transform: [{ translateX: slideAnim2 }], bottom: -10 }}>
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: "#ff8c00", marginBottom: 10 }]}
-                onPress={() => {
-                  navigation.navigate("TankScanScreenTabs", {
-                    tankDataLocal: tank,
-                    tankId: tank.id,
-                  });
-                  setIsExpanded(false);
-                }}
-              >
-                <MaterialCommunityIcons name="cube-scan" size={26} color="#fff" />
-              </TouchableOpacity>
-            </Animated.View>
-          </>
-        )}
-
-        {/* Main Toggle Button */}
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: "#00CED1" }]} onPress={() => setIsExpanded(!isExpanded)}>
-          <MaterialCommunityIcons name={isExpanded ? "close" : "menu"} size={26} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      {/* ONLY Add Species Button */}
+      <TouchableOpacity
+        style={[styles.addButton, { bottom: 85, right: 20, position: "absolute", backgroundColor: "#4CAF50" }]}
+        onPress={() =>
+          navigation.navigate("AddSpeciesScreen", {
+            tankId: tank.id,
+            type: tank.tank_type,
+          })
+        }
+      >
+        <MaterialCommunityIcons name="plus" size={26} color="#fff" />
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.addButton, { bottom: 220, backgroundColor: "#ee6affff" }]}

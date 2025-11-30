@@ -5,6 +5,7 @@ import { AuthContext } from "../../../authcontext";
 import { baseUrl } from "../../../config";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
+import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform } from "react-native";
 
 export default function UpdateTankScreen({ route, navigation }) {
   const { token } = useContext(AuthContext);
@@ -21,7 +22,7 @@ export default function UpdateTankScreen({ route, navigation }) {
 
   // Water parameters form state
   const [temperature, setTemperature] = useState(String(tankData?.waterParams?.temperature ?? ""));
-  const [oxygen, setOxygen] = useState(String(tankData?.waterParams?.estimated_oxygen_mgL ?? ""));
+  // const [oxygen, setOxygen] = useState(String(tankData?.waterParams?.estimated_oxygen_mgL ?? ""));
   const [nitrite, setNitrite] = useState(String(tankData?.waterParams?.estimated_nitrite_ppm ?? ""));
   const [nitrate, setNitrate] = useState(String(tankData?.waterParams?.estimated_nitrate_ppm ?? ""));
   const [ammonia, setAmmonia] = useState(String(tankData?.waterParams?.estimated_ammonia_ppm ?? ""));
@@ -65,18 +66,21 @@ export default function UpdateTankScreen({ route, navigation }) {
   const updateWaterParams = async () => {
     try {
       const body = {
-        temperature: parseFloat(temperature),
-        estimated_oxygen_mgL: parseFloat(oxygen),
-        estimated_nitrite_ppm: parseFloat(nitrite),
-        estimated_nitrate_ppm: parseFloat(nitrate),
-        estimated_ammonia_ppm: parseFloat(ammonia),
-        estimated_ph: parseFloat(ph),
-        // Saltwater-specific fields
-        magnesium_mgL: tankType === "SALT" ? parseFloat(magnesium) : null,
-        alkalinity_dkh: tankType === "SALT" ? parseFloat(alkalinity) : null,
-        calcium_mgL: tankType === "SALT" ? parseFloat(calcium) : null,
-        phosphate_ppm: tankType === "SALT" ? parseFloat(phosphate) : null,
+        temperature: temperature ? parseFloat(temperature) : null,
+        estimated_ph: ph ? parseFloat(ph) : null,
+        // estimated_oxygen_mgL: oxygen ? parseFloat(oxygen) : null,
+        estimated_nitrite_ppm: nitrite ? parseFloat(nitrite) : null,
+        estimated_nitrate_ppm: nitrate ? parseFloat(nitrate) : null,
+        estimated_ammonia_ppm: ammonia ? parseFloat(ammonia) : null,
       };
+
+      // Include saltwater keys ONLY if SALT
+      if (tankType === "Saltwater") {
+        body.magnesium_mgL = magnesium ? parseFloat(magnesium) : null;
+        body.alkalinity_dkh = alkalinity ? parseFloat(alkalinity) : null;
+        body.calcium_mgL = calcium ? parseFloat(calcium) : null;
+        body.phosphate_ppm = phosphate ? parseFloat(phosphate) : null;
+      }
 
       const res = await fetch(`${baseUrl}/tanks/${tankId}/water-parameters/`, {
         method: "POST",
@@ -87,6 +91,7 @@ export default function UpdateTankScreen({ route, navigation }) {
         body: JSON.stringify(body),
       });
 
+      console.log("body", res);
       if (res.ok) {
         Alert.alert("Success", "Water parameters updated successfully");
         navigation.goBack();
@@ -134,9 +139,7 @@ export default function UpdateTankScreen({ route, navigation }) {
       </View>
 
       <TextInput style={styles.input} placeholder="Size" value={size} onChangeText={setSize} keyboardType="numeric" />
-
       <TextInput style={styles.input} placeholder="Size Unit (L/G)" value={sizeUnit} onChangeText={setSizeUnit} />
-
       <TextInput style={styles.input} placeholder="Notes" value={notes} onChangeText={setNotes} multiline />
 
       <TouchableOpacity style={styles.saveBtn} onPress={updateTank}>
@@ -148,7 +151,7 @@ export default function UpdateTankScreen({ route, navigation }) {
   const renderWaterForm = () => {
     const hasValues =
       temperature.trim() !== "" ||
-      oxygen.trim() !== "" ||
+      // oxygen.trim() !== "" ||
       nitrite.trim() !== "" ||
       nitrate.trim() !== "" ||
       ammonia.trim() !== "" ||
@@ -178,7 +181,7 @@ export default function UpdateTankScreen({ route, navigation }) {
               onScanComplete: (result) => {
                 // Common parameters
                 if (result?.estimated_ph !== undefined) setPh(String(result.estimated_ph));
-                if (result?.estimated_oxygen_mgL !== undefined) setOxygen(String(result.estimated_oxygen_mgL));
+                // if (result?.estimated_oxygen_mgL !== undefined) setOxygen(String(result.estimated_oxygen_mgL));
                 if (result?.estimated_nitrite_ppm !== undefined) setNitrite(String(result.estimated_nitrite_ppm));
                 if (result?.estimated_nitrate_ppm !== undefined) setNitrate(String(result.estimated_nitrate_ppm));
                 if (result?.estimated_ammonia_ppm !== undefined) setAmmonia(String(result.estimated_ammonia_ppm));
@@ -211,7 +214,7 @@ export default function UpdateTankScreen({ route, navigation }) {
         </TouchableOpacity>
 
         {renderInput("Temperature (°C)", temperature, setTemperature, "Enter temperature")}
-        {renderInput("Oxygen (mg/L)", oxygen, setOxygen, "Enter oxygen")}
+        {/* {renderInput("Oxygen (mg/L)", oxygen, setOxygen, "Enter oxygen")} */}
         {renderInput("Nitrite (ppm)", nitrite, setNitrite, "Enter nitrite")}
         {renderInput("Nitrate (ppm)", nitrate, setNitrate, "Enter nitrate")}
         {renderInput("Ammonia (ppm)", ammonia, setAmmonia, "Enter ammonia")}
@@ -228,7 +231,7 @@ export default function UpdateTankScreen({ route, navigation }) {
         )}
 
         {hasValues && (
-          <TouchableOpacity style={styles.saveBtn} onPress={updateWaterParams}>
+          <TouchableOpacity style={{ ...styles.saveBtn, marginBottom: 120 }} onPress={updateWaterParams}>
             <Text style={styles.saveText}>Update Water Parameters</Text>
           </TouchableOpacity>
         )}
@@ -237,25 +240,32 @@ export default function UpdateTankScreen({ route, navigation }) {
   };
 
   return (
-    <View style={{ ...styles.container, paddingBottom: 100 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
-          <Ionicons name="arrow-back" size={24} color="#00CED1" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Update Tank</Text>
-      </View>
+    <KeyboardAvoidingView style={{ flex: 1, padding: 10 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ ...styles.backBtn, backgroundColor: "#1f1f1f", borderRadius: 8 }}>
+              <Ionicons name="arrow-back" size={24} color="#00CED1" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Update Tank</Text>
+          </View>
 
-      <View style={styles.toggleRow}>
-        <TouchableOpacity style={[styles.toggleBtn, activeForm === "tank" && styles.activeToggle]} onPress={() => setActiveForm("tank")}>
-          <Text style={styles.toggleText}>Tank Info</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.toggleBtn, activeForm === "water" && styles.activeToggle]} onPress={() => setActiveForm("water")}>
-          <Text style={styles.toggleText}>Water Params</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.toggleRow}>
+            <TouchableOpacity style={[styles.toggleBtn, activeForm === "tank" && styles.activeToggle]} onPress={() => setActiveForm("tank")}>
+              <Text style={styles.toggleText}>Tank Info</Text>
+            </TouchableOpacity>
 
-      {activeForm === "tank" ? renderTankForm() : renderWaterForm()}
-    </View>
+            <TouchableOpacity style={[styles.toggleBtn, activeForm === "water" && styles.activeToggle]} onPress={() => setActiveForm("water")}>
+              <Text style={styles.toggleText}>Water Params</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="always" contentContainerStyle={{ paddingBottom: 150 }} showsVerticalScrollIndicator={false}>
+            {activeForm === "tank" ? renderTankForm() : renderWaterForm()}
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 

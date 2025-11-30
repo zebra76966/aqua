@@ -233,10 +233,10 @@ const PhScanScreen = () => {
                   <MaterialIcons name="flask-outline" size={22} color="#00CED1" />
                   <Text style={styles.resultText}>Estimated pH: {pHscale.toFixed(1)}</Text>
                 </View>
-                <View style={styles.resultRow}>
+                {/* <View style={styles.resultRow}>
                   <MaterialIcons name="water" size={22} color="#00CED1" />
                   <Text style={styles.resultText}>Oxygen: {scanResult.estimated_oxygen_mgL} mg/L</Text>
-                </View>
+                </View> */}
                 <View style={styles.resultRow}>
                   <MaterialIcons name="leaf" size={22} color="#00CED1" />
                   <Text style={styles.resultText}>Nitrate: {scanResult.estimated_nitrate_ppm} ppm</Text>
@@ -249,14 +249,21 @@ const PhScanScreen = () => {
                   <MaterialIcons name="fish" size={22} color="#00CED1" />
                   <Text style={styles.resultText}>Ammonia: {scanResult.estimated_ammonia_ppm} ppm</Text>
                 </View>
-                <View style={styles.resultRow}>
+                {/* <View style={styles.resultRow}>
                   <MaterialIcons name="cloud-outline" size={22} color="#00CED1" />
                   <Text style={styles.resultText}>CO₂ Level: {scanResult.estimated_co2_level}</Text>
-                </View>
+                </View> */}
                 {scanResult?.average_color_hsv && (
                   <View style={styles.colorPreviewContainer}>
                     <Text style={styles.colorPreviewLabel}>Detected Color</Text>
-                    <View style={[styles.colorCircle, { backgroundColor: hsvToRgb(scanResult.average_color_hsv[0], scanResult.average_color_hsv[1], scanResult.average_color_hsv[2]) }]} />
+                    <View
+                      style={[
+                        styles.colorCircle,
+                        {
+                          backgroundColor: `rgb(${scanResult.avg_color_rgb[0]}, ${scanResult.avg_color_rgb[1]}, ${scanResult.avg_color_rgb[2]})`,
+                        },
+                      ]}
+                    />
                   </View>
                 )}
               </View>

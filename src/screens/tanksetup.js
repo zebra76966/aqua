@@ -162,67 +162,30 @@ const TankSetupScreen = ({ navigation }) => {
 
           {/* Tank Size Slider */}
           {/* Tank Size Slider + Input */}
-          <View style={styles.sliderContainer}>
-            <View style={{ ...styles.sliderLabel, marginBottom: 30 }}>
-              <MaterialIcons name="ruler" size={16} />
-              <Text style={{ marginLeft: 6 }}>Tank Size ({sizeUnit})</Text>
-            </View>
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="ruler" size={18} color="#333" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder={`Tank Size (${sizeUnit})`}
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+              value={tankSizeInput}
+              onChangeText={(val) => {
+                setTankSizeInput(val);
 
-            {/* Tank Size Input */}
-            <View style={styles.sizeBox}>
-              <TextInput
-                style={styles.sizeInput}
-                keyboardType="numeric"
-                value={tankSizeInput}
-                onChangeText={(val) => {
-                  setTankSizeInput(val); // always update input as string
+                if (val === "") {
+                  setTankSizeValue(0);
+                  setTankSize(0);
+                  return;
+                }
 
-                  if (val === "") {
-                    setErrorMsg("");
-                    return;
-                  }
-
-                  const num = parseFloat(val);
-
-                  if (isNaN(num)) {
-                    return; // keep typing freely even if invalid
-                  }
-
+                const num = parseFloat(val);
+                if (!isNaN(num)) {
                   setTankSizeValue(num);
-
-                  if (num > 200) {
-                    setErrorMsg("Tank size cannot exceed 200 litres.");
-                  } else {
-                    setErrorMsg("");
-                  }
-                }}
-                placeholder="0.00"
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            {/* Tank Size Slider */}
-            <Slider
-              style={{ width: "100%", height: 40 }}
-              minimumValue={0}
-              maximumValue={200}
-              value={tankSizeValue}
-              onValueChange={(value) => {
-                setTankSizeValue(value);
-                setTankSizeInput(value.toFixed(1)); // sync cleanly into input
-
-                if (value > 200) {
-                  setErrorMsg("Tank size cannot exceed 200.");
-                } else {
-                  setErrorMsg("");
+                  setTankSize(num);
                 }
               }}
-              minimumTrackTintColor="#00CED1"
-              maximumTrackTintColor="#000"
-              thumbTintColor="#00CED1"
             />
-
-            <Text style={styles.sliderValue}>{tankSizeValue > 0 ? tankSizeValue.toFixed(1) : "0.0"}</Text>
           </View>
 
           {/* Toggle Gallons / Litres */}

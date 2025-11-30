@@ -23,6 +23,7 @@ Notifications.setNotificationHandler({
   }),
 });
 export default function DashboardScreen({ navigation }) {
+  const { token, activeTankId, logout } = useContext(AuthContext);
   const [logs, setLogs] = useState([]);
   const [logModal, setLogModal] = useState(false);
   const [logText, setLogText] = useState("");
@@ -33,17 +34,33 @@ export default function DashboardScreen({ navigation }) {
 
   const loadLogs = async () => {
     const json = await AsyncStorage.getItem("tank_logs");
-    if (json) setLogs(JSON.parse(json));
-  };
+    if (!json) return;
 
+    const allLogs = JSON.parse(json);
+    const tankLogs = allLogs[activeTankId] || [];
+    setLogs(tankLogs);
+  };
   useEffect(() => {
     loadLogs();
-  }, []);
+  }, [activeTankId]);
 
-  const saveLogs = async (logs) => {
+  useFocusEffect(
+    useCallback(() => {
+      loadLogs();
+    }, [activeTankId])
+  );
+
+  const saveLogs = async (updatedTankLogs) => {
     try {
-      await AsyncStorage.setItem("tank_logs", JSON.stringify(logs));
-      setLogs(logs);
+      const json = await AsyncStorage.getItem("tank_logs");
+      const allLogs = json ? JSON.parse(json) : {};
+
+      // save WITHOUT touching other tanks
+      allLogs[activeTankId] = updatedTankLogs;
+
+      await AsyncStorage.setItem("tank_logs", JSON.stringify(allLogs));
+
+      setLogs(updatedTankLogs); // state sync
     } catch (err) {
       console.log("Saving logs failed:", err);
     }
@@ -65,6 +82,7 @@ export default function DashboardScreen({ navigation }) {
 
     const newLog = {
       id: Date.now().toString(),
+      tankId: activeTankId, // 👈 save tank ID!
       text: logText,
       reminderId,
       created_at: new Date().toISOString(),
@@ -121,8 +139,6 @@ export default function DashboardScreen({ navigation }) {
       requestAllPermissions();
     }, [])
   );
-
-  const { token, activeTankId, logout } = useContext(AuthContext);
 
   const [tankData, setTankData] = useState(null);
   const [loading, setLoading] = useState(true);
